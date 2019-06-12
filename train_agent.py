@@ -50,18 +50,18 @@ def main(steps, gpu, imagefile, boxfile, tensorboard):
     explorer = chainerrl.explorers.LinearDecayEpsilonGreedy(
         start_epsilon=1.0,
         end_epsilon=0.1,
-        decay_steps=5000,
+        decay_steps=300000,
         random_action_func=env.action_space.sample)
 
     # DQN uses Experience Replay.
     # Specify a replay buffer and its capacity.
-    replay_buffer = chainerrl.replay_buffer.ReplayBuffer(capacity=10 ** 6)
+    replay_buffer = chainerrl.replay_buffer.ReplayBuffer(capacity=100)
 
     # Now create an agent that will interact with the environment.
     agent = chainerrl.agents.DQN(
         q_func, optimizer, replay_buffer, gamma, explorer,
         gpu=gpu,
-        replay_start_size=500, update_interval=1,
+        replay_start_size=100, update_interval=1,
         target_update_interval=100)
 
     logging.basicConfig(level=logging.INFO, stream=sys.stdout, format='')
