@@ -4,6 +4,7 @@ from chainer import links as L
 from chainer import Chain
 from resnet_group_norm import ResNet as ResNetGroupNorm
 
+
 class CustomModel(Chain):
     def __init__(self, n_actions):
         super(CustomModel, self).__init__()

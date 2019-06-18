@@ -1,15 +1,15 @@
 import os
-import click
 from tqdm import tqdm
 from load_agent import load_agent, create_environment
 
+from config import CONFIG, print_config
 
-@click.command()
-@click.option("--gpu", default=-1, help="ID of the GPU to be used. -1 if the CPU should be used instead.")
-@click.option("--imagefile", "-i", default='image_locations.txt', help="Path to the file containing the image locations. Has to contain exactly 1 image!", type=click.Path(exists=True))
-@click.option("--boxfile", "-b", default='bounding_boxes.npy', help="Path to the bounding boxes. Has to be of exactly 1 image!", type=click.Path(exists=True))
-@click.option("--agentdirectory", "-a", default='./agent', help="Path to the directory containing the agent that should be executed.", type=click.Path(exists=True))
-def generate_image_sequence(gpu, imagefile, boxfile, agentdirectory):
+
+"""
+Set arguments w/ config file (--config) or cli
+:gpu_id :imagefile_path :boxfile_path :agentdir_path
+"""
+def generate_image_sequence():
     """
     Usage:
     * Generate a dataset with exactly one image
@@ -25,8 +25,8 @@ def generate_image_sequence(gpu, imagefile, boxfile, agentdirectory):
     """
     max_steps_per_image = 50
 
-    env = create_environment(imagefile, boxfile, gpu)
-    agent = load_agent(env, agentdirectory, gpu, epsilon=0.0)
+    env = create_environment(CONFIG['imagefile_path'], CONFIG['boxfile_path'], CONFIG['gpu_id'])
+    agent = load_agent(env, CONFIG['agentdir_path'], CONFIG['gpu_id'], epsilon=0.0)
 
     images_human = []
     images_box = []

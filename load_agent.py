@@ -4,13 +4,17 @@ import chainer
 import chainerrl
 from text_localization_environment import TextLocEnv
 
+from config import CONFIG, print_config
 
-def load_agent(env, directory="agent", gpu=0, epsilon=0.3):
+
+def load_agent(env, directory=CONFIG['agentdir_path'], gpu=CONFIG['gpu_id'], epsilon=0.3):
     obs_size = 2139
     n_actions = env.action_space.n
     q_func = chainerrl.q_functions.FCStateQFunctionWithDiscreteAction(
-        obs_size, n_actions,
-        n_hidden_layers=2, n_hidden_channels=1024)
+        obs_size,
+        n_actions,
+        n_hidden_layers=2,
+        n_hidden_channels=1024)
 
     if gpu != -1:
         q_func = q_func.to_gpu(gpu)
@@ -19,35 +23,38 @@ def load_agent(env, directory="agent", gpu=0, epsilon=0.3):
     optimizer = chainer.optimizers.Adam(eps=1e-2)
     optimizer.setup(q_func)
 
-    # Set the discount factor that discounts future rewards.
-    gamma = 0.95
-
     # Use epsilon-greedy for exploration
     explorer = chainerrl.explorers.ConstantEpsilonGreedy(
-        epsilon=epsilon, random_action_func=env.action_space.sample)
+        epsilon=epsilon,
+        random_action_func=env.action_space.sample)
 
     # DQN uses Experience Replay.
     # Specify a replay buffer and its capacity.
-    replay_buffer = chainerrl.replay_buffer.ReplayBuffer(capacity=10 ** 6)
+    replay_buffer = chainerrl.replay_buffer.ReplayBuffer(capacity=CONFIG['replay_buffer_capacity'])
 
     # Now create an agent that will interact with the environment.
     agent = chainerrl.agents.DQN(
-        q_func, optimizer, replay_buffer, gamma, explorer,
+        q_func,
+        optimizer,
+        replay_buffer,
+        CONFIG['gamma'],
+        explorer,
         gpu=gpu,
-        replay_start_size=500, update_interval=1,
-        target_update_interval=100)
+        replay_start_size=CONFIG['replay_start_size'],
+        update_interval=CONFIG['update_interval'],
+        target_update_interval=CONFIG['target_update_interval'])
 
     agent.load(directory)
 
     return agent
 
 
-def create_environment(imagefile='image_locations.txt', boxfile='bounding_boxes.npy', gpu=0):
+def create_environment(imagefile=CONFIG['imagefile_path'], boxfile=CONFIG['boxfile_path'], gpu=CONFIG['gpu_id']):
     relative_paths = np.loadtxt(imagefile, dtype=str)
     images_base_path = os.path.dirname(imagefile)
     absolute_paths = [images_base_path + i.strip('.') for i in relative_paths]
 
-    bboxes = np.load(boxfile)
+    bboxes = np.load(boxfile, allow_pickle=True)
 
     return TextLocEnv(absolute_paths, bboxes, gpu)
 

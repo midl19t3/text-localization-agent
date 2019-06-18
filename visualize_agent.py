@@ -1,4 +1,3 @@
-import click
 import os
 import numpy as np
 from text_localization_environment import TextLocEnv
@@ -12,47 +11,57 @@ from collections import defaultdict
 from PIL import Image
 
 from custom_model import CustomModel
+from config import CONFIG, print_config
 
-ACTION_MEANINGS = {0: 'right',
-                   1: 'left',
-                   2: 'up,',
-                   3: 'down',
-                   4: 'bigger',
-                   5: 'smaller',
-                   6: 'fatter',
-                   7: 'taller',
-                   8: 'trigger'
-                   }
 
-@click.command()
-@click.option("--imagefile", "-i", default='image_locations.txt', help="Path to the file containing the image locations.", type=click.Path(exists=True))
-@click.option("--boxfile", "-b", default='bounding_boxes.npy', help="Path to the bounding boxes.", type=click.Path(exists=True))
-@click.option("--directory", "-d", default='agent', help="Path to the agent.", type=click.Path(exists=True))
-@click.option("--gpu", "-g", default=-1, help="GPU to use.")
-def main(imagefile, boxfile, directory, gpu):
-    print(imagefile)
-    print(boxfile)
+ACTION_MEANINGS = {
+    0: 'right',
+    1: 'left',
+    2: 'up,',
+    3: 'down',
+    4: 'bigger',
+    5: 'smaller',
+    6: 'fatter',
+    7: 'taller',
+    8: 'trigger'
+}
 
-    relative_paths = np.loadtxt(imagefile, dtype=str)
-    images_base_path = os.path.dirname(imagefile)
+"""
+Set arguments w/ config file (--config) or cli
+:gpu_id :imagefile_path :boxfile_path :resultdir_path :start_epsilon :end_epsilon :decay_steps \
+:replay_buffer_capacity :gamma :replay_start_size :update_interval :target_update_interval :steps \
+:steps :eval_n_episodes :train_max_episode_len :eval_interval
+"""
+def main():
+    print_config()
+
+    relative_paths = np.loadtxt(CONFIG['imagefile_path'], dtype=str)
+    images_base_path = os.path.dirname(CONFIG['imagefile_path'])
     absolute_paths = [images_base_path + i.strip('.') for i in relative_paths]
-    bboxes = np.load(boxfile, allow_pickle=True)
+    bboxes = np.load(CONFIG['boxfile_path'], allow_pickle=True)
 
     env = TextLocEnv(absolute_paths, bboxes, -1)
     q_func = chainerrl.q_functions.SingleModelStateQFunctionWithDiscreteAction(CustomModel(9))
     optimizer = chainer.optimizers.Adam(eps=1e-2)
     optimizer.setup(q_func)
-    replay_buffer = chainerrl.replay_buffer.ReplayBuffer(capacity=10 ** 6)
-    gamma = 0.95
+    replay_buffer = chainerrl.replay_buffer.ReplayBuffer(capacity=CONFIG['replay_buffer_capacity'])
+
     explorer = chainerrl.explorers.ConstantEpsilonGreedy(
-        epsilon=0, random_action_func=env.action_space.sample)
+        epsilon=0,
+        random_action_func=env.action_space.sample)
 
     agent = chainerrl.agents.DQN(
-        q_func, optimizer, replay_buffer, gamma, explorer,
-        gpu=gpu,
-        replay_start_size=500, update_interval=1,
-        target_update_interval=100)
-    agent.load(directory)
+        q_func,
+        optimizer,
+        replay_buffer,
+        CONFIG['gamma'],
+        explorer,
+        gpu=CONFIG['gpu_id'],
+        replay_start_size=CONFIG['replay_start_size'],
+        update_interval=CONFIG['update_interval'],
+        target_update_interval=CONFIG['target_update_interval'])
+
+    agent.load(CONFIG['agentdir_path'])
     actions = defaultdict(int)
     obs = env.reset()
     done = False
@@ -69,7 +78,6 @@ def main(imagefile, boxfile, directory, gpu):
         print(ACTION_MEANINGS[action], reward, done, info)
         #input()
         i += 1
-
 
 
 if __name__ == '__main__':

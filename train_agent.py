@@ -1,4 +1,3 @@
-import click
 import os
 import numpy as np
 from text_localization_environment import TextLocEnv
@@ -14,55 +13,56 @@ import time
 import re
 
 from custom_model import CustomModel
+from config import CONFIG, write_config, print_config
 
-@click.command()
-@click.option("--steps", "-s", default=5000, help="Amount of steps to train the agent.")
-@click.option("--gpu", default=-1, help="ID of the GPU to be used. -1 if the CPU should be used instead.")
-@click.option("--imagefile", "-i", default='image_locations.txt', help="Path to the file containing the image locations.", type=click.Path(exists=True))
-@click.option("--boxfile", "-b", default='bounding_boxes.npy', help="Path to the bounding boxes.", type=click.Path(exists=True))
-@click.option("--tensorboard/--no-tensorboard", default=False)
-def main(steps, gpu, imagefile, boxfile, tensorboard):
-    print(steps)
-    print(gpu)
-    print(imagefile)
-    print(boxfile)
 
-    relative_paths = np.loadtxt(imagefile, dtype=str)
-    images_base_path = os.path.dirname(imagefile)
+"""
+Set arguments w/ config file (--config) or cli
+:gpu_id :imagefile_path :boxfile_path :resultdir_path :start_epsilon :end_epsilon :decay_steps \
+:replay_buffer_capacity :gamma :replay_start_size :update_interval :target_update_interval :steps \
+:steps :eval_n_episodes :train_max_episode_len :eval_interval
+"""
+def main():
+    print_config()
+
+    relative_paths = np.loadtxt(CONFIG['imagefile_path'], dtype=str)
+    images_base_path = os.path.dirname(CONFIG['imagefile_path'])
     absolute_paths = [images_base_path + i.strip('.') for i in relative_paths]
-    bboxes = np.load(boxfile, allow_pickle=True)
+    bboxes = np.load(CONFIG['boxfile_path'], allow_pickle=True)
 
-    env = TextLocEnv(absolute_paths, bboxes, gpu)
+    env = TextLocEnv(absolute_paths, bboxes, CONFIG['gpu_id'])
 
     n_actions = env.action_space.n
     q_func = chainerrl.q_functions.SingleModelStateQFunctionWithDiscreteAction(CustomModel(n_actions))
-    if gpu != -1:
-        q_func = q_func.to_gpu(gpu)
+    if CONFIG['gpu_id'] != -1:
+        q_func = q_func.to_gpu(CONFIG['gpu_id'])
 
     # Use Adam to optimize q_func. eps=1e-2 is for stability.
     optimizer = chainer.optimizers.Adam(eps=1e-2)
     optimizer.setup(q_func)
 
-    # Set the discount factor that discounts future rewards.
-    gamma = 0.1
-
     # Use epsilon-greedy for exploration
     explorer = chainerrl.explorers.LinearDecayEpsilonGreedy(
-        start_epsilon=1.0,
-        end_epsilon=0.1,
-        decay_steps=300000,
+        start_epsilon=CONFIG['start_epsilon'],
+        end_epsilon=CONFIG['end_epsilon'],
+        decay_steps=CONFIG['decay_steps'],
         random_action_func=env.action_space.sample)
 
     # DQN uses Experience Replay.
     # Specify a replay buffer and its capacity.
-    replay_buffer = chainerrl.replay_buffer.ReplayBuffer(capacity=100)
+    replay_buffer = chainerrl.replay_buffer.EpisodicReplayBuffer(capacity=CONFIG['replay_buffer_capacity'])
 
     # Now create an agent that will interact with the environment.
     agent = chainerrl.agents.DQN(
-        q_func, optimizer, replay_buffer, gamma, explorer,
-        gpu=gpu,
-        replay_start_size=100, update_interval=1,
-        target_update_interval=100)
+        q_func,
+        optimizer,
+        replay_buffer,
+        CONFIG['gamma'],
+        explorer,
+        gpu=CONFIG['gpu_id'],
+        replay_start_size=CONFIG['replay_start_size'],
+        update_interval=CONFIG['update_interval'],
+        target_update_interval=CONFIG['target_update_interval'])
 
     logging.basicConfig(level=logging.INFO, stream=sys.stdout, format='')
 
@@ -73,24 +73,28 @@ def main(steps, gpu, imagefile, boxfile, tensorboard):
 
     step_hooks = []
     logger = None
-    if tensorboard:
+    if CONFIG['use_tensorboard']:
         writer = SummaryWriter("tensorboard/tensorBoard_exp_" + timestr + "_" + agentClassName)
         step_hooks = [TensorBoardLoggingStepHook(writer)]
         handler = TensorBoardEvaluationLoggingHandler(writer, agent, eval_run_count)
         logger = logging.getLogger()
         logger.addHandler(handler)
 
+    # save config file to results dir after initializing agent
+    write_config()
+
     # Overwrite the normal evaluation method
     # chainerrl.experiments.evaluator.run_evaluation_episodes = run_localization_evaluation_episodes
 
     train_agent_with_evaluation(
-        agent, env,
-        steps=steps,  # Train the agent for 5000 steps
-        eval_n_episodes=10,  # 10 episodes are sampled for each evaluation
+        agent,
+        env,
+        steps=CONFIG['steps'],  # Train the agent for no of steps
+        eval_n_episodes=CONFIG['eval_n_episodes'],  # episodes are sampled for each evaluation
         eval_n_steps=None,
-        train_max_episode_len=100,  # Maximum length of each episodes
-        eval_interval=500,  # Evaluate the agent after every 100 steps
-        outdir='result',  # Save everything to 'result' directory
+        train_max_episode_len=CONFIG['train_max_episode_len'],  # Maximum length of each episodes
+        eval_interval=CONFIG['eval_interval'],  # Evaluate the agent after every no of steps
+        outdir=CONFIG['resultdir_path'],  # Save everything to directory
         step_hooks=step_hooks,
         logger=logger)
 
@@ -104,9 +108,7 @@ class TensorBoardLoggingStepHook(chainerrl.experiments.StepHook):
 
     def __call__(self, env, agent, step):
         step_count = agent.t
-
         self.summary_writer.add_scalar('average_q', agent.average_q, step_count)
-
         self.summary_writer.add_scalar('average_loss', agent.average_loss, step_count)
 
         return

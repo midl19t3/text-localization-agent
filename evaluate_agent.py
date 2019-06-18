@@ -1,27 +1,28 @@
 import sys
 import numpy as np
-import click
 from tqdm import tqdm
 from load_agent import load_agent, create_environment
 from chainercv.evaluations.eval_detection_voc import eval_detection_voc
 
+from config import CONFIG, print_config
 
-@click.command()
-@click.option("--gpu", default=-1, help="ID of the GPU to be used. -1 if the CPU should be used instead.")
-@click.option("--imagefile", "-i", default='image_locations.txt', help="Path to the file containing the image locations.", type=click.Path(exists=True))
-@click.option("--boxfile", "-b", default='bounding_boxes.npy', help="Path to the bounding boxes.", type=click.Path(exists=True))
-@click.option("--agentdirectory", "-a", default='./agent', help="Path to the directory containing the agent that should be evaluated.", type=click.Path(exists=True))
-@click.option("--save/--dont-save", default=False, help="Boolean indicating whether the intermediate results of the evaluation should be saved.")
-def evaluate(gpu, imagefile, boxfile, agentdirectory, save):
+
+"""
+Set arguments w/ config file (--config) or cli
+:gpu_id :imagefile_path :boxfile_path :agentdir_path :save_eval
+"""
+def evaluate():
+    print_config()
+
     max_steps_per_image = 200
     max_steps_per_run = 50
     max_trigger_events_per_image = 1
 
-    images = np.loadtxt(imagefile, dtype=str).tolist()
-    gt_bboxes = np.load(boxfile)
+    images = np.loadtxt(CONFIG['imagefile_path'], dtype=str).tolist()
+    gt_bboxes = np.load(CONFIG['boxfile_path'], allow_pickle=True)
 
-    env = create_environment(imagefile, boxfile, gpu)
-    agent = load_agent(env, agentdirectory, gpu, epsilon=0.0)
+    env = create_environment(CONFIG['imagefile_path'], CONFIG['boxfile_path'], CONFIG['gpu_id'])
+    agent = load_agent(env, CONFIG['agentdir_path'], CONFIG['gpu_id'], epsilon=0.0)
 
     pred_bboxes = []
 
@@ -68,7 +69,7 @@ def evaluate(gpu, imagefile, boxfile, agentdirectory, save):
         scores = np.array(scores, dtype=np.float32)
         pred_scores.append(scores)
 
-    if save:
+    if CONFIG['save_eval']:
         np.save('gt_bboxes.npy', gt_bboxes)
         np.save('gt_labels.npy', gt_labels)
         np.save('pred_bboxes.npy', pred_bboxes)
@@ -115,4 +116,4 @@ def convert_env_bboxes_to_chainercv_format(bboxes):
 
 
 if __name__ == '__main__':
-    evaluate(sys.argv[1:])
+    evaluate()
