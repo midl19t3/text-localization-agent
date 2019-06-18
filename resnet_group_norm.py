@@ -47,11 +47,11 @@ class ResNet(chainer.Chain):
                 self.res4 = BasicBlock(block[2], 512)
             elif n_layers in [18, 20, 21, 34]:
                 self.conv1 = L.Convolution2D(3, 64, 7, 2, 3, initialW=w, nobias=True)
-                self.bn1 = L.GroupNormalization(16)
-                self.res2 = BasicBlock(block[0], 64, 1, num_groups=16)
-                self.res3 = BasicBlock(block[1], 128)
-                self.res4 = BasicBlock(block[2], 256)
-                self.res5 = BasicBlock(block[3], 512)
+                self.bn1 = L.GroupNormalization(16, 64)
+                self.res2 = BasicBlock(block[0], 64, 64, 1, num_groups=16)
+                self.res3 = BasicBlock(block[1], 64, 128)
+                self.res4 = BasicBlock(block[2], 128, 256)
+                self.res5 = BasicBlock(block[3], 256, 512)
             elif n_layers in [32, 44, 56, 110]:
                 self.conv1 = L.Convolution2D(3, 16, 7, 2, 3, initialW=w, nobias=True)
                 self.bn1 = L.GroupNormalization(8)
@@ -98,12 +98,12 @@ class ResNet(chainer.Chain):
 
 class BasicBlock(chainer.ChainList):
 
-    def __init__(self, layer, ch, stride=2, num_groups=32):
+    def __init__(self, layer, input_ch, output_ch, stride=2, num_groups=32):
         super(BasicBlock, self).__init__()
         with self.init_scope():
-            self.add_link(BasicA(ch, stride, num_groups))
+            self.add_link(BasicA(input_ch, output_ch, stride, num_groups))
             for i in range(layer - 1):
-                self.add_link(BasicB(ch, num_groups))
+                self.add_link(BasicB(output_ch, num_groups))
 
     def __call__(self, x):
         for f in self.children():
@@ -127,18 +127,18 @@ class BottleNeckBlock(chainer.ChainList):
 
 class BasicA(chainer.Chain):
 
-    def __init__(self, ch, stride, num_groups):
+    def __init__(self, input_ch, output_ch, stride, num_groups):
         super(BasicA, self).__init__()
         w = chainer.initializers.HeNormal()
 
         with self.init_scope():
-            self.conv1 = L.Convolution2D(None, ch, 3, stride, 1, initialW=w, nobias=True)
-            self.bn1 = L.GroupNormalization(num_groups)
-            self.conv2 = L.Convolution2D(None, ch, 3, 1, 1, initialW=w, nobias=True)
-            self.bn2 = L.GroupNormalization(num_groups)
+            self.conv1 = L.Convolution2D(input_ch, output_ch, 3, stride, 1, initialW=w, nobias=True)
+            self.bn1 = L.GroupNormalization(num_groups, output_ch)
+            self.conv2 = L.Convolution2D(output_ch, output_ch, 3, 1, 1, initialW=w, nobias=True)
+            self.bn2 = L.GroupNormalization(num_groups, output_ch)
 
-            self.conv3 = L.Convolution2D(None, ch, 3, stride, 1, initialW=w, nobias=True)
-            self.bn3 = L.GroupNormalization(num_groups)
+            self.conv3 = L.Convolution2D(input_ch, output_ch, 3, stride, 1, initialW=w, nobias=True)
+            self.bn3 = L.GroupNormalization(num_groups, output_ch)
 
     def __call__(self, x):
         h1 = F.relu(self.bn1(self.conv1(x)))
@@ -155,10 +155,10 @@ class BasicB(chainer.Chain):
         w = chainer.initializers.HeNormal()
 
         with self.init_scope():
-            self.conv1 = L.Convolution2D(None, ch, 3, 1, 1, initialW=w, nobias=True)
-            self.bn1 = L.GroupNormalization(num_groups)
-            self.conv2 = L.Convolution2D(None, ch, 3, 1, 1, initialW=w, nobias=True)
-            self.bn2 = L.GroupNormalization(num_groups)
+            self.conv1 = L.Convolution2D(ch, ch, 3, 1, 1, initialW=w, nobias=True)
+            self.bn1 = L.GroupNormalization(num_groups, ch)
+            self.conv2 = L.Convolution2D(ch, ch, 3, 1, 1, initialW=w, nobias=True)
+            self.bn2 = L.GroupNormalization(num_groups, ch)
 
     def __call__(self, x):
         h = F.relu(self.bn1(self.conv1(x)))
