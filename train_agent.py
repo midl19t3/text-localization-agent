@@ -40,6 +40,9 @@ def main():
     # Use Adam to optimize q_func. eps=1e-2 is for stability.
     optimizer = chainer.optimizers.Adam(eps=1e-2)
     optimizer.setup(q_func)
+    # find out number of steps covered already with print(np.load('./path_to_results/optimizer.npz')['t'])
+    from chainer import serializers
+    serializers.load_npz('./results_1m_steps/best/optimizer.npz', optimizer)
 
     # Use epsilon-greedy for exploration
     explorer = chainerrl.explorers.LinearDecayEpsilonGreedy(
@@ -63,6 +66,8 @@ def main():
         replay_start_size=CONFIG['replay_start_size'],
         update_interval=CONFIG['update_interval'],
         target_update_interval=CONFIG['target_update_interval'])
+
+    agent.load('./results_1m_steps/best')  # loads ... /best/model.npz implicitly
 
     logging.basicConfig(level=logging.INFO, stream=sys.stdout, format='')
 
