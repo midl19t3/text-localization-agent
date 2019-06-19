@@ -38,7 +38,7 @@ def main():
         q_func = q_func.to_gpu(CONFIG['gpu_id'])
 
     # Use Adam to optimize q_func. eps=1e-2 is for stability.
-    optimizer = chainer.optimizers.Adam(eps=1e-2)
+    optimizer = chainer.optimizers.Adam(eps=CONFIG['epsilon'], final_lr=CONFIG['learning_rate'])
     optimizer.setup(q_func)
 
     # Use epsilon-greedy for exploration

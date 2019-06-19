@@ -28,6 +28,10 @@ def load_config(path=None):
     # hardware
     CONFIG['gpu_id'] = _configparser.getint('agent', 'gpu_id', fallback=-1)
 
+    # optimizer
+    CONFIG['epsilon'] = _configparser.getfloat('agent', 'epsilon', fallback=0.01)
+    CONFIG['learning_rate'] = _configparser.getfloat('agent', 'learning_rate', fallback=0.005)
+
     # agent
     CONFIG['gamma'] = _configparser.getfloat('agent', 'gamma', fallback=0.1)
     CONFIG['replay_start_size'] = _configparser.getint('agent', 'replay_start_size', fallback=100)
