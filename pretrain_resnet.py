@@ -17,6 +17,8 @@ import chainer.functions as F
 import chainer.links as L
 from chainer.training import extensions
 
+from chainer.backends.cuda import cupy
+
 from PIL import Image
 
 from custom_model_for_pretraining import CustomModelForPretraining
@@ -32,6 +34,66 @@ def parse_args():
 
     print(args)
     return args
+
+@chainer.dataset.converter()
+def resize_images_from_batch(batch, device):
+
+    def convert_single_example(example):
+        # import pdb;pdb.set_trace()
+        image_array = example[0]
+        n_channels, height, width = image_array.shape
+        if n_channels != 3:
+            # repeat single greyscale color channel three times to get RGB representation
+            image_array = np.repeat(image_array, 3, axis=0)
+        # print('current shape', (n_channels, height, width))
+        reshaped = cupy.transpose(image_array, (1, 2, 0))
+        # print('reshaped shape', reshaped.shape)
+        im = Image.fromarray(reshaped)
+        import pdb;pdb.set_trace()
+        # im.save('/home/padl19t1/example_before.png', 'PNG')
+        if im.mode != 'RGB':
+            im = im.convert('RGB')
+
+        im = im.resize((224, 224), Image.LANCZOS)
+        # print('new image size', im.size)
+        # im.save('/home/padl19t1/example_after.png', 'PNG')
+        as_np_array = cupy.asarray(im, dtype=cupy.float32)
+        try:
+            assert as_np_array.shape == (224, 224, 3)
+        except Exception as e:
+            import pdb;pdb.set_trace()
+        # print('shape is', as_np_array.shape)
+        # import pdb;pdb.set_trace()
+        return (as_np_array, cupy.asarray(example[1]))
+
+    # batch = cupy.apply_along_axis(convert_single_example, axis=1, arr=batch)
+    # import pdb;pdb.set_trace()
+    new_batch = []
+    for example in batch:
+        # import pdb;pdb.set_trace()
+        new_batch.append(convert_single_example(example))
+
+    # import pdb;pdb.set_trace()
+    batch = new_batch
+    assert type(batch) == list
+    assert len(batch) == 128
+    for elem in batch:
+        try:
+            assert type(elem) == tuple
+            assert type(elem[0]) == cupy.ndarray
+            assert elem[0].dtype == cupy.float32
+            assert elem[0].shape == (224, 224, 3)
+            assert type(elem[1]) == cupy.ndarray
+            assert elem[1].dtype == cupy.int32
+            assert elem[1].shape == ()
+            assert type(np.asscalar(elem[1])) == int
+        except Exception as e: 
+            import pdb;pdb.set_trace()
+
+    # call default StandardUpdater converter
+    batch = chainer.dataset.concat_examples(batch, device)
+
+    return device.send(batch)
 
 if __name__ == '__main__':
     args = parse_args()
@@ -49,7 +111,7 @@ if __name__ == '__main__':
 
     dataset_pairs = [(example['file_name'], example['class']) for example in train_image_class_mapping]
 
-    dataset = datasets.LabeledImageDataset(dataset_pairs, root='/data/common/imagenet', dtype=np.float32)  # TODO: append / to path string?
+    dataset = datasets.LabeledImageDataset(dataset_pairs, root='/data/common/imagenet', dtype=cupy.uint8)
 
     split_index = int(len(dataset) / 10)
     test = datasets.SubDataset(dataset, start=0, finish=split_index)
@@ -113,7 +175,7 @@ if __name__ == '__main__':
     optimizer = optimizers.MomentumSGD(lr=args.learning_rate, momentum=0.9)
     optimizer.setup(model)
 
-    updater = training.updaters.StandardUpdater(train_iter, optimizer, device=args.gpu)
+    updater = training.updaters.StandardUpdater(train_iter, optimizer, device=args.gpu, converter=resize_images_from_batch)
 
     trainer = training.Trainer(updater, (args.max_epoch, 'epoch'), out='imagenet_result')
 
