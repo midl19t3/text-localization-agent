@@ -82,9 +82,11 @@ def main():
         logger.addHandler(handler)
 
         gradients_weights_log_interval = 100
-        optimizer.add_hook(
-            TensorboardGradientPlotter(summary_writer=writer, log_interval=gradients_weights_log_interval)
-        )
+        
+	# Remove the following lines to remove weights logging!
+	#optimizer.add_hook(
+        #    TensorboardGradientPlotter(summary_writer=writer, log_interval=gradients_weights_log_interval)
+        #)
 
     # save config file to results dir after initializing agent
     write_config()
