@@ -73,7 +73,12 @@ def main():
         obs, reward, done, info = env.step(action)
         #j -= 1
         img = env.render(mode='human', return_as_file=True)
-        img.save(f'img/{i}',"bmp")
+
+        IMG_PATH = 'img/'
+        if not os.path.exists(IMG_PATH):
+            os.makedirs(IMG_PATH)
+        img_path = os.path.join(IMG_PATH, f'{i}')
+        img.save(img_path, "bmp")
 
         print(ACTION_MEANINGS[action], reward, done, info)
         #input()
