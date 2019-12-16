@@ -66,24 +66,23 @@ def main():
     obs = env.reset()
     done = False
     i = 0
-    while (not done) and i < 15:
-        #print(i,j)
+    frames = []
+    while (not done and i < 100):
         action = agent.act(obs)
         actions[ACTION_MEANINGS[action]] += 1
         obs, reward, done, info = env.step(action)
-        #j -= 1
         img = env.render(mode='human', return_as_file=True)
-
-        IMG_PATH = 'img/'
-        if not os.path.exists(IMG_PATH):
-            os.makedirs(IMG_PATH)
-        img_path = os.path.join(IMG_PATH, f'{i}')
-        img.save(img_path, "bmp")
+        frames.append(img)
 
         print(ACTION_MEANINGS[action], reward, done, info)
-        #input()
         i += 1
 
+    frames[0].save('agent.gif',
+                   format='GIF',
+                   append_images=frames[1:],
+                   save_all=True,
+                   duration=100,
+                   loop=0)
 
 if __name__ == '__main__':
     main()
