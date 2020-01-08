@@ -11,6 +11,7 @@ import sys
 from tb_chainer import SummaryWriter
 import time
 import re
+import json
 
 from custom_model import CustomModel
 from config import CONFIG, write_config, print_config
@@ -26,10 +27,29 @@ Set arguments w/ config file (--config) or cli
 def main():
     print_config()
 
-    relative_paths = np.loadtxt(CONFIG['imagefile_path'], dtype=str)
-    images_base_path = os.path.dirname(CONFIG['imagefile_path'])
-    absolute_paths = [images_base_path + i.strip('.') for i in relative_paths]
-    bboxes = np.load(CONFIG['boxfile_path'], allow_pickle=True)
+    # Load dataset to initialize environment with
+    absolute_paths, bboxes = [], []
+    jsonfile_path = CONFIG.get('jsonfile_path')
+
+    if jsonfile_path:
+        print(f'Loading data from {jsonfile_path}')
+        images_base_path = os.path.dirname(jsonfile_path)
+        with open(jsonfile_path) as f:
+            data = json.load(f)
+            for example in data:
+                absolute_path = os.path.join(images_base_path, example['file_name'])
+                if os.path.exists(absolute_path):
+                    absolute_paths.append(absolute_path)
+                    bboxes.append(list(example['bounding_boxes']))
+    else:
+        images_base_path = os.path.dirname(CONFIG['imagefile_path'])
+        relative_paths = np.loadtxt(CONFIG['imagefile_path'], dtype=str)
+        absolute_paths = [images_base_path + i.strip('.') for i in relative_paths]
+        bboxes = np.load(CONFIG['boxfile_path'], allow_pickle=True)
+
+    assert len(absolute_paths) == len(bboxes)
+    print(f'Image base path: {images_base_path}')
+    print(f'#Images: {len(absolute_paths)}')
 
     env = TextLocEnv(absolute_paths, bboxes, CONFIG['gpu_id'])
 
