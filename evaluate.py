@@ -87,7 +87,10 @@ def create_agent_with_environment(actions, agentdir_path, imagefile_path,
 
     num_actions = len(actions)
 
-    env = TextLocEnv(absolute_paths, bboxes, -1, mode=env_mode, max_steps_per_image=max_steps_per_image)
+    env = TextLocEnv(
+        absolute_paths, bboxes, -1, mode=env_mode, premasking=False,
+        playout_episode=True, max_steps_per_image=max_steps_per_image
+    )
     q_func = chainerrl.q_functions.SingleModelStateQFunctionWithDiscreteAction(
         CustomModel(num_actions))
     optimizer = chainer.optimizers.Adam(eps=1e-2)
@@ -129,7 +132,7 @@ Set arguments w/ config file (--config) or cli
 :replay_buffer_capacity :gamma :replay_start_size :update_interval :target_update_interval :steps \
 :steps :eval_n_episodes :train_max_episode_len :eval_interval
 """
-def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='images', plots_dirname='plots'):
+def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='images', plots_dirname='plots', max_sample_size=5):
     print_config()
 
     dataset = Dataset(CONFIG['imagefile_path'], CONFIG['boxfile_path'])
@@ -157,7 +160,12 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
     image_trigger_ious = {}
     image_avg_iou = {}
 
-    for image_idx in range(len(dataset)):
+    # Use sampling to speed up evaluation if needed
+    sample_size = len(dataset)
+    if max_sample_size is not None and max_sample_size > -1:
+        sample_size = min(sample_size, max_sample_size)
+
+    for image_idx in range(sample_size):
         obs = env.reset(image_index=image_idx)
         done = False
         # Environment will terminate based on max steps per image
@@ -307,7 +315,7 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
     images_path = os.path.join(eval_path, images_dirname)
     ensure_folder(images_path)
 
-    for image_idx in range(2): # range(len(dataset)):
+    for image_idx in range(sample_size):
         image_path, _ = dataset.get(image_idx, as_image=False)
         image_name = dataset.get_image_name(image_idx)
         image = cv2.imread(image_path)
@@ -321,7 +329,7 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
     # Visualize agent behaviour on example images
     print("Visualizing episodes")
     NUM_EXAMPLE_IMAGES = 20
-    for n in range(NUM_EXAMPLE_IMAGES):
+    for n in range(sample_size):
         # TODO: move to environment
         #image, bboxes = dataset.random_sample()
         # TODO: name according to img index in dataset
