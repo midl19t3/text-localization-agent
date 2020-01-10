@@ -138,7 +138,7 @@ Set arguments w/ config file (--config) or cli
 :replay_buffer_capacity :gamma :replay_start_size :update_interval :target_update_interval :steps \
 :steps :eval_n_episodes :train_max_episode_len :eval_interval
 """
-def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='images', plots_dirname='plots', max_sample_size=5):
+def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='images', plots_dirname='plots', max_sample_size=1):
     print_config()
 
     if CONFIG['jsonfile_path']:
@@ -155,10 +155,6 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
     now_dirname = now_date.strftime("%m-%d-%Y+%H-%M-%S")
     eval_path = os.path.join(eval_dirname, now_dirname)
     ensure_folder(eval_path)
-
-    # Create folder for vizualization
-    viz_path = os.path.join(eval_path, viz_dirname)
-    ensure_folder(viz_path)
 
     print("Running localizations")
     # Map from image indices to predicted bounding box
@@ -332,28 +328,32 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
         cv2.imwrite(os.path.join(images_path, image_fname), image)
         print('Image %s created successfully!' % image_name)
 
-    return
-
     # Visualize agent behaviour on example images
     print("Visualizing episodes")
-    NUM_EXAMPLE_IMAGES = 20
-    for n in range(sample_size):
-        # TODO: move to environment
-        #image, bboxes = dataset.random_sample()
-        # TODO: name according to img index in dataset
-        example_path = os.path.join(viz_path, f'{n}')
-        ensure_folder(example_path)
-        obs = env.reset()
+
+    viz_path = os.path.join(eval_path, viz_dirname)
+    ensure_folder(viz_path)
+
+    for image_idx in range(sample_size):
+        obs = env.reset(image_index=image_idx)
         done = False
-        i = 0
+        frames = []
         # Environment will terminate based on max steps per image
         while (not done):
             action = agent.act(obs)
             obs, reward, done, info = env.step(action)
             img = env.render(mode='human', return_as_file=True)
-            img_path = os.path.join(example_path, f'{i}')
-            img.save(img_path, "bmp")
-            i += 1
+            frames.append(img)
+        gif_path = os.path.join(viz_path, f'{image_idx}.gif')
+        frames[0].save(gif_path,
+           format='GIF',
+           append_images=frames[1:],
+           save_all=True,
+           duration=100,
+           loop=0
+       )
+       image_name = dataset.get_image_name(image_idx)
+       print('Image %s created successfully!' % image_name)
 
 if __name__ == '__main__':
     main()
