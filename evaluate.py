@@ -3,6 +3,7 @@ import sys
 import datetime
 import numpy as np
 import pandas as pd
+import json
 import chainer
 import chainerrl
 import matplotlib
@@ -36,21 +37,32 @@ except ModuleNotFoundError:
 
 
 class Dataset:
-    def __init__(self, imagefile_path, boxfile_path):
-        self.image_paths = self._get_image_paths(imagefile_path)
-        self.true_bboxes = self._load_bboxes(boxfile_path)
+    def __init__(self, image_paths, true_bboxes):
+        self.image_paths = image_paths
+        self.true_bboxes = true_bboxes
 
-    def _get_image_paths(self, imagefile_path):
-        relative_paths = np.loadtxt(imagefile_path, dtype=str)
+    @classmethod
+    def from_json(cls, jsonfile_path):
+        absolute_paths, bboxes = [], []
+        images_base_path = os.path.dirname(jsonfile_path)
+        with open(jsonfile_path) as f:
+            data = json.load(f)
+            for example in data:
+                absolute_path = os.path.join(images_base_path, example['file_name'])
+                if os.path.exists(absolute_path):
+                    absolute_paths.append(absolute_path)
+                    bboxes.append(list(example['bounding_boxes']))
+        return cls(absolute_paths, bboxes)
+
+    @classmethod
+    def from_numpy(cls, imagefile_path, boxfile_path):
         images_base_path = os.path.dirname(imagefile_path)
+        relative_paths = np.loadtxt(imagefile_path, dtype=str)
         absolute_paths = [images_base_path + i.strip('.') for i in relative_paths]
         if type(absolute_paths) is not list:
             absolute_paths = [image_paths]
-        return absolute_paths
-
-    def _load_bboxes(self, boxfile_path):
         bboxes = np.load(boxfile_path, allow_pickle=True)
-        return bboxes
+        return cls(absolute_paths, bboxes)
 
     def get(self, idx, as_image=True):
         image = self.image_paths[idx]
@@ -73,23 +85,17 @@ class Dataset:
         return len(self.image_paths)
 
 
-def create_agent_with_environment(actions, agentdir_path, imagefile_path,
-    boxfile_path, env_mode='test', gpu_id=-1,
-    max_steps_per_image=200,
+def create_agent_with_environment(actions, dataset, agentdir_path,
+    env_mode='test', gpu_id=-1, max_steps_per_image=200,
     # Training params needed to initialize chainer, but shouldn't matter for testing
     replay_buffer_capacity=20000, gamma=0.95, replay_start_size=100,
     update_interval=1, target_update_interval=100
 ):
-    relative_paths = np.loadtxt(imagefile_path, dtype=str)
-    images_base_path = os.path.dirname(imagefile_path)
-    absolute_paths = [images_base_path + i.strip('.') for i in relative_paths]
-    bboxes = np.load(boxfile_path, allow_pickle=True)
-
     num_actions = len(actions)
-
     env = TextLocEnv(
-        absolute_paths, bboxes, -1, mode=env_mode, premasking=False,
-        playout_episode=True, max_steps_per_image=max_steps_per_image
+        dataset.image_paths, dataset.true_bboxes, -1, mode=env_mode,
+        premasking=False, playout_episode=True,
+        max_steps_per_image=max_steps_per_image
     )
     q_func = chainerrl.q_functions.SingleModelStateQFunctionWithDiscreteAction(
         CustomModel(num_actions))
@@ -135,11 +141,13 @@ Set arguments w/ config file (--config) or cli
 def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='images', plots_dirname='plots', max_sample_size=5):
     print_config()
 
-    dataset = Dataset(CONFIG['imagefile_path'], CONFIG['boxfile_path'])
+    if CONFIG['jsonfile_path']:
+        dataset = Dataset.from_json(CONFIG['jsonfile_path'])
+    else:
+        dataset = Dataset.from_numpy(CONFIG['imagefile_path'], CONFIG['boxfile_path'])
 
     agent, env = create_agent_with_environment(
-        ACTIONS, CONFIG['agentdir_path'],
-        CONFIG['imagefile_path'], CONFIG['boxfile_path']
+        ACTIONS, dataset, CONFIG['agentdir_path']
     )
 
     # Create new evaluation folder
