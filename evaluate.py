@@ -138,7 +138,7 @@ Set arguments w/ config file (--config) or cli
 :replay_buffer_capacity :gamma :replay_start_size :update_interval :target_update_interval :steps \
 :steps :eval_n_episodes :train_max_episode_len :eval_interval
 """
-def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='images', plots_dirname='plots', max_sample_size=200):
+def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='images', plots_dirname='plots', max_sample_size=100):
     print_config()
 
     if CONFIG['jsonfile_path']:
@@ -155,6 +155,11 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
     now_dirname = now_date.strftime("%m-%d-%Y+%H-%M-%S")
     eval_path = os.path.join(eval_dirname, now_dirname)
     ensure_folder(eval_path)
+
+    # Store config
+    config_path = os.path.join(eval_path, 'config.json')
+    with open(config_path, 'w') as fp:
+        json.dump(CONFIG, fp)
 
     print("Running localizations")
     # Map from image indices to predicted bounding box
@@ -335,6 +340,7 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
     ensure_folder(viz_path)
 
     for image_idx in range(sample_size):
+        print('Visualizing %s' % str(image_idx))
         obs = env.reset(image_index=image_idx)
         done = False
         frames = []
@@ -352,8 +358,6 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
            duration=100,
            loop=0
        )
-       image_name = dataset.get_image_name(image_idx)
-       print('Image %s created successfully!' % image_name)
 
 if __name__ == '__main__':
     main()
