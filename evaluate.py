@@ -138,7 +138,7 @@ Set arguments w/ config file (--config) or cli
 :replay_buffer_capacity :gamma :replay_start_size :update_interval :target_update_interval :steps \
 :steps :eval_n_episodes :train_max_episode_len :eval_interval
 """
-def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='images', plots_dirname='plots', max_sample_size=1):
+def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='images', plots_dirname='plots', max_sample_size=200):
     print_config()
 
     if CONFIG['jsonfile_path']:
