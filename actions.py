@@ -8,5 +8,6 @@ ACTIONS = {
     5: 'smaller',
     6: 'fatter',
     7: 'taller',
-    8: 'trigger'
+    8: 'trigger',
+    9: 'next_image_trigger'
 }
