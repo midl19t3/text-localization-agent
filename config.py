@@ -20,9 +20,7 @@ def load_config(path=None):
         _configparser.read(path)
 
     # data and paths
-    CONFIG['jsonfile_path'] = _configparser.get('agent', 'jsonfile_path', fallback='')
-    CONFIG['imagefile_path'] = _configparser.get('agent', 'imagefile_path', fallback='../generated_data/image_locations.txt')
-    CONFIG['boxfile_path'] = _configparser.get('agent', 'boxfile_path', fallback='../generated_data/bounding_boxes.npy')
+    CONFIG['dataset'] = _configparser._sections['dataset']
     CONFIG['resultdir_path'] = _configparser.get('agent', 'resultdir_path', fallback='./results')
     CONFIG['agentdir_path'] = _configparser.get('agent', 'agentdir_path', fallback='./agent')
 
