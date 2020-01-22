@@ -13,7 +13,7 @@ import time
 import re
 import json
 
-from datasets import get_dataset
+from datasets import load_dataset
 from custom_model import CustomModel
 from config import CONFIG, write_config, print_config
 from tensorboard_gradient_histogram import TensorboardGradientPlotter
@@ -30,14 +30,10 @@ Set arguments w/ config file (--config) or cli
 def main():
     print_config()
 
-    # Load dataset to initialize environment with
-    dataset_id = CONFIG['dataset']
-    dataset = get_dataset(dataset_id)(CONFIG['dataset_path'])
-    image_paths, bounding_boxes = dataset.data()
-    
-    assert len(image_paths) == len(bounding_boxes)
+    dataset = load_dataset(CONFIG['dataset'], CONFIG['dataset_path'])
+    assert len(dataset.image_paths) == len(dataset.bounding_boxes)
 
-    env = TextLocEnv(image_paths, bounding_boxes)
+    env = TextLocEnv(dataset.image_paths, dataset.bounding_boxes)
 
     # Seed agent & environment seeds for reproducable experiments
     set_random_seed(CONFIG['seed_agent'], gpus=[CONFIG['gpu_id']])
