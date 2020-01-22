@@ -165,7 +165,10 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
     with open(config_path, 'w') as fp:
         json.dump(CONFIG, fp)
 
-    print("Running localizations")
+    print("Running localizations & visualizing episodes")
+    viz_path = os.path.join(eval_path, viz_dirname)
+    ensure_folder(viz_path)
+
     # Map from image indices to predicted bounding box
     image_pred_bboxes = {}
     image_true_bboxes = {}
@@ -179,18 +182,25 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
         sample_size = min(sample_size, max_sample_size)
 
     for image_idx in range(sample_size):
+        print('Image: %s' % str(image_idx))
         obs = env.reset(image_index=image_idx)
         done = False
+        frames = []
+
         # Environment will terminate based on max steps per image
         while (not done):
-            print(env.current_step)
             action = agent.act(obs)
             obs, reward, done, info = env.step(action)
+            # Save rendered frame for current step
+            img = env.render(mode='human', return_as_file=True)
+            frames.append(img)
+
         # Save bounding box predictions
         image_pred_bboxes[image_idx] = [TextLocEnv.to_standard_box(box) for box in env.episode_pred_bboxes]
         image_true_bboxes[image_idx] = [TextLocEnv.to_standard_box(box) for box in env.episode_true_bboxes]
         print(image_pred_bboxes[image_idx])
         print(image_true_bboxes[image_idx])
+
         # Track intermediary metrics
         image_trigger_ious[image_idx] = env.episode_trigger_ious
         if len(env.episode_trigger_ious) > 0:
@@ -199,6 +209,17 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
             image_avg_iou[image_idx] = 0
         print(image_trigger_ious)
         print(image_avg_iou)
+
+        # Store visualized episode
+        print('Visualizing %s' % str(image_idx))
+        gif_path = os.path.join(viz_path, f'{image_idx}.gif')
+        frames[0].save(gif_path,
+           format='GIF',
+           append_images=frames[1:],
+           save_all=True,
+           duration=100,
+           loop=0
+       )
 
     print("Write bbox files for Object Detection Metrics")
 
@@ -336,32 +357,6 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
         image_fname = Path(image_path).name
         cv2.imwrite(os.path.join(images_path, image_fname), image)
         print('Image %s created successfully!' % image_name)
-
-    # Visualize agent behaviour on example images
-    print("Visualizing episodes")
-
-    viz_path = os.path.join(eval_path, viz_dirname)
-    ensure_folder(viz_path)
-
-    for image_idx in range(sample_size):
-        print('Visualizing %s' % str(image_idx))
-        obs = env.reset(image_index=image_idx)
-        done = False
-        frames = []
-        # Environment will terminate based on max steps per image
-        while (not done):
-            action = agent.act(obs)
-            obs, reward, done, info = env.step(action)
-            img = env.render(mode='human', return_as_file=True)
-            frames.append(img)
-        gif_path = os.path.join(viz_path, f'{image_idx}.gif')
-        frames[0].save(gif_path,
-           format='GIF',
-           append_images=frames[1:],
-           save_all=True,
-           duration=100,
-           loop=0
-       )
 
 if __name__ == '__main__':
     main()
