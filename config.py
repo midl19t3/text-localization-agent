@@ -20,7 +20,8 @@ def load_config(path=None):
         _configparser.read(path)
 
     # data and paths
-    CONFIG['dataset'] = _configparser._sections['dataset']
+    CONFIG['dataset'] = _configparser.get('dataset', 'dataset')
+    CONFIG['dataset_path'] = _configparser.get('dataset', 'dataset_path')
     CONFIG['resultdir_path'] = _configparser.get('agent', 'resultdir_path', fallback='./results')
     CONFIG['agentdir_path'] = _configparser.get('agent', 'agentdir_path', fallback='./agent')
 

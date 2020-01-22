@@ -31,8 +31,8 @@ def main():
     print_config()
 
     # Load dataset to initialize environment with
-    dataset_id = CONFIG['dataset']['dataset']
-    dataset = get_dataset(dataset_id)(CONFIG['dataset'])
+    dataset_id = CONFIG['dataset']
+    dataset = get_dataset(dataset_id)(CONFIG['dataset_path'])
     image_paths, bounding_boxes = dataset.data()
 
     assert len(image_paths) == len(bounding_boxes)
