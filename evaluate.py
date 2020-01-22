@@ -38,7 +38,7 @@ try:
 except ModuleNotFoundError:
     print('Object Detection Library not initialized correctly')
 
-def create_agent_with_environment(actions, image_paths, bounding_boxes, config
+def create_agent_with_environment(actions, image_paths, bounding_boxes, config,
     env_mode='test', gpu_id=-1, max_steps_per_image=200,
     # Training params needed to initialize chainer, but shouldn't matter for testing
     replay_buffer_capacity=20000, gamma=0.95, replay_start_size=100,
@@ -100,10 +100,10 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
 
     dataset_id = CONFIG['dataset']
     dataset = get_dataset(dataset_id)(CONFIG['dataset_path'])
-    image_paths, bounding_boxes = dataset.data()
+    dataset.load()
 
     agent, env = create_agent_with_environment(
-        ACTIONS, image_paths, bounding_boxes, config
+        ACTIONS, dataset.image_paths, dataset.bounding_boxes, CONFIG
     )
 
     # Create new evaluation folder

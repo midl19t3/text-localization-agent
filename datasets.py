@@ -2,33 +2,55 @@ import json
 import os
 import numpy as np
 import scipy.io as sio
+from PIL import Image
+from pathlib import Path
 
 class Dataset:
     id = 'noop'
 
     def __init__(self, dataset_path):
         self.dataset_path = os.path.abspath(dataset_path)
+        self.image_paths = []
+        self.bounding_boxes = []
 
-    def data(self):
-        pass  
+    def load(self):
+        pass
+
+    def get(self, index, as_image=True):
+        image = self.image_paths[index]
+        if as_image:
+            image = Image.open(image)
+        true_bboxes = self.true_bboxes[index]
+        return image, true_bboxes
+
+    def get_image_name(self, index):
+        image_path, _ = self.get(index, as_image=False)
+        image_fname = Path(image_path).name
+        image_name = image_fname.split('.')[0]
+        return image_name
+
+    def random_sample(self, as_image=True):
+        random_index = np.random.randint(len(self.image_paths))
+        return self.get(random_index, as_image=as_image)
+
+    def __len__(self):
+        return len(self.image_paths)
 
 class SimpleDataset(Dataset):
     id = 'simple'
 
-    def data(self):
+    def load(self):
         image_locations_file = os.path.join(self.dataset_path, 'image_locations.txt')
         relative_image_paths = np.loadtxt(image_locations_file, dtype=str)
-        absolute_image_paths = [os.path.join(self.dataset_path, image_path) for image_path in relative_image_paths]
+        self.image_paths = [os.path.join(self.dataset_path, image_path) for image_path in relative_image_paths]
         
         bounding_boxes_file = os.path.join(self.dataset_path, 'bounding_boxes.npy')
-        bounding_boxes = np.load(bounding_boxes_file, allow_pickle=True)
-
-        return absolute_image_paths, bounding_boxes
+        self.bounding_boxes = np.load(bounding_boxes_file, allow_pickle=True)
 
 class SignDataset(Dataset):
     id = 'sign'
 
-    def data(self):
+    def load(self):
         config_file_path = os.path.join(self.dataset_path, 'training.json')
 
         absolute_image_paths = []
@@ -39,10 +61,11 @@ class SignDataset(Dataset):
             for image in data:
                 absolute_path = os.path.join(self.dataset_path, image['file_name'])
                 if not os.path.exists(absolute_path): continue
-                absolute_paths.append(absolute_path)
-                bboxes.append(list(image['bounding_boxes']))
+                absolute_image_paths.append(absolute_path)
+                bounding_boxes.append(list(image['bounding_boxes']))
 
-        return absolute_image_paths, bounding_boxes
+        self.image_paths = absolute_image_paths
+        self.bounding_boxes = bounding_boxes
 
 class SynthTextDataset(Dataset):
     id = 'synthtext'
@@ -118,7 +141,8 @@ class SynthTextDataset(Dataset):
             
             bounding_boxes.append(output_bboxes)
 
-        return absolute_image_paths, bounding_boxes
+        self.bounding_boxes = bounding_boxes
+        self.image_paths = absolute_image_paths
         
 def get_dataset(id):
     datasets = [SimpleDataset, SignDataset, SynthTextDataset]

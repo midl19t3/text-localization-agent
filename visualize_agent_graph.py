@@ -27,9 +27,9 @@ def main():
 
     dataset_id = CONFIG['dataset']
     dataset = get_dataset(dataset_id)(CONFIG['dataset_path'])
-    image_paths, bounding_boxes = dataset.data()
+    dataset.load()
 
-    env = TextLocEnv(image_paths, bounding_boxes)
+    env = TextLocEnv(dataset.image_paths, dataset.bounding_boxes)
     m = CustomModel(10)
     vs = [m(env.reset())]
     g = c.build_computational_graph(vs)

@@ -33,11 +33,11 @@ def main():
     # Load dataset to initialize environment with
     dataset_id = CONFIG['dataset']
     dataset = get_dataset(dataset_id)(CONFIG['dataset_path'])
-    image_paths, bounding_boxes = dataset.data()
+    dataset.load()
     
-    assert len(image_paths) == len(bounding_boxes)
+    assert len(dataset.image_paths) == len(dataset.bounding_boxes)
 
-    env = TextLocEnv(image_paths, bounding_boxes)
+    env = TextLocEnv(dataset.image_paths, dataset.bounding_boxes)
 
     # Seed agent & environment seeds for reproducable experiments
     set_random_seed(CONFIG['seed_agent'], gpus=[CONFIG['gpu_id']])

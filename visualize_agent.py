@@ -38,9 +38,9 @@ def main():
 
     dataset_id = CONFIG['dataset']
     dataset = get_dataset(dataset_id)(CONFIG['dataset_path'])
-    image_paths, bounding_boxes = dataset.data()
+    dataset.load()
 
-    env = TextLocEnv(image_paths, bounding_boxes)
+    env = TextLocEnv(dataset.image_paths, dataset.bounding_boxes)
     q_func = chainerrl.q_functions.SingleModelStateQFunctionWithDiscreteAction(CustomModel(9))
     optimizer = chainer.optimizers.Adam(eps=1e-2)
     optimizer.setup(q_func)
