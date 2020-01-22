@@ -17,6 +17,8 @@ from custom_model import CustomModel
 from config import CONFIG, print_config
 from actions import ACTIONS
 
+from chainerrl.misc.random_seed import set_random_seed
+
 def init_detection_metrics_lib():
     def add_path(path):
         if path not in sys.path:
@@ -85,7 +87,7 @@ class Dataset:
         return len(self.image_paths)
 
 
-def create_agent_with_environment(actions, dataset, agentdir_path,
+def create_agent_with_environment(actions, dataset, config,
     env_mode='test', gpu_id=-1, max_steps_per_image=200,
     # Training params needed to initialize chainer, but shouldn't matter for testing
     replay_buffer_capacity=20000, gamma=0.95, replay_start_size=100,
@@ -93,7 +95,7 @@ def create_agent_with_environment(actions, dataset, agentdir_path,
 ):
     num_actions = len(actions)
     env = TextLocEnv(
-        dataset.image_paths, dataset.true_bboxes, -1, mode=env_mode,
+        dataset.image_paths, dataset.true_bboxes, mode=env_mode,
         premasking=False, playout_episode=True,
         max_steps_per_image=max_steps_per_image
     )
@@ -117,7 +119,11 @@ def create_agent_with_environment(actions, dataset, agentdir_path,
         replay_start_size=replay_start_size,
         update_interval=update_interval,
         target_update_interval=target_update_interval)
-    agent.load(agentdir_path)
+    agent.load(config['agentdir_path'])
+
+    # Seed agent & environment seeds for reproducable experiments
+    set_random_seed(config['seed_agent'], gpus=[config['gpu_id']])
+    env.seed(config['seed_environment'])
 
     return agent, env
 
@@ -146,9 +152,7 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
     else:
         dataset = Dataset.from_numpy(CONFIG['imagefile_path'], CONFIG['boxfile_path'])
 
-    agent, env = create_agent_with_environment(
-        ACTIONS, dataset, CONFIG['agentdir_path']
-    )
+    agent, env = create_agent_with_environment(ACTIONS, dataset, CONFIG)
 
     # Create new evaluation folder
     now_date = datetime.datetime.now()
