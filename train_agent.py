@@ -34,7 +34,7 @@ def main():
     dataset_id = CONFIG['dataset']
     dataset = get_dataset(dataset_id)(CONFIG['dataset_path'])
     image_paths, bounding_boxes = dataset.data()
-
+    
     assert len(image_paths) == len(bounding_boxes)
 
     env = TextLocEnv(image_paths, bounding_boxes)
