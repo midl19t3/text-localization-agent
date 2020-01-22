@@ -17,6 +17,8 @@ from custom_model import CustomModel
 from config import CONFIG, write_config, print_config
 from tensorboard_gradient_histogram import TensorboardGradientPlotter
 
+from chainerrl.misc.random_seed import set_random_seed
+
 
 """
 Set arguments w/ config file (--config) or cli
@@ -51,7 +53,11 @@ def main():
     print(f'Image base path: {images_base_path}')
     print(f'#Images: {len(absolute_paths)}')
 
-    env = TextLocEnv(absolute_paths, bboxes, CONFIG['gpu_id'])
+    env = TextLocEnv(absolute_paths, bboxes)
+
+    # Seed agent & environment seeds for reproducable experiments
+    set_random_seed(CONFIG['seed_agent'], gpus=[CONFIG['gpu_id']])
+    env.seed(CONFIG['seed_environment'])
 
     n_actions = env.action_space.n
     q_func = chainerrl.q_functions.SingleModelStateQFunctionWithDiscreteAction(CustomModel(n_actions))
@@ -102,7 +108,7 @@ def main():
         logger.addHandler(handler)
 
         gradients_weights_log_interval = 100
-        
+
 	# Remove the following lines to remove weights logging!
 	#optimizer.add_hook(
         #    TensorboardGradientPlotter(summary_writer=writer, log_interval=gradients_weights_log_interval)
