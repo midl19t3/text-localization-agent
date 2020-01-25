@@ -16,7 +16,7 @@ from PIL import Image
 from custom_model import CustomModel
 from config import CONFIG, print_config
 from actions import ACTIONS
-from datasets import get_dataset
+from datasets import load_dataset
 
 from chainerrl.misc.random_seed import set_random_seed
 
@@ -98,10 +98,7 @@ Set arguments w/ config file (--config) or cli
 def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='images', plots_dirname='plots', max_sample_size=100):
     print_config()
 
-    dataset_id = CONFIG['dataset']
-    dataset = get_dataset(dataset_id)(CONFIG['dataset_path'])
-    dataset.load()
-
+    dataset = load_dataset(CONFIG['dataset'], CONFIG['dataset_path'])
     agent, env = create_agent_with_environment(
         ACTIONS, dataset.image_paths, dataset.bounding_boxes, CONFIG
     )

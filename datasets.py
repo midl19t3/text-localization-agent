@@ -146,7 +146,8 @@ class SynthTextDataset(Dataset):
         self.bounding_boxes = bounding_boxes
         self.image_paths = absolute_image_paths
         
-def get_dataset(id):
+def load_dataset(id, path):
     datasets = [SimpleDataset, SignDataset, SynthTextDataset]
-    return {Dataset.id: Dataset for Dataset in datasets}[id]
+    dataset = {Dataset.id: Dataset for Dataset in datasets}[id](path)
+    return dataset
   
