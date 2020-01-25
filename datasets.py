@@ -4,15 +4,17 @@ import numpy as np
 import scipy.io as sio
 from PIL import Image
 from pathlib import Path
+from abc import ABC, abstractmethod
 
-class Dataset:
-    id = 'noop'
+class Dataset(ABC):
+    id = NotImplemented
 
     def __init__(self, dataset_path):
         self.dataset_path = os.path.abspath(dataset_path)
         self.image_paths = []
         self.bounding_boxes = []
 
+    @abstractmethod
     def load(self):
         pass
 
