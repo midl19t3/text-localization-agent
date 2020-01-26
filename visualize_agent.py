@@ -12,6 +12,7 @@ from PIL import Image
 
 from custom_model import CustomModel
 from config import CONFIG, print_config
+from datasets import load_dataset
 
 
 ACTION_MEANINGS = {
@@ -35,12 +36,9 @@ Set arguments w/ config file (--config) or cli
 def main():
     print_config()
 
-    relative_paths = np.loadtxt(CONFIG['imagefile_path'], dtype=str)
-    images_base_path = os.path.dirname(CONFIG['imagefile_path'])
-    absolute_paths = [images_base_path + i.strip('.') for i in relative_paths]
-    bboxes = np.load(CONFIG['boxfile_path'], allow_pickle=True)
-
-    env = TextLocEnv(absolute_paths, bboxes, -1)
+    dataset = load_dataset(CONFIG['dataset'], CONFIG['dataset_path'])
+    env = TextLocEnv(dataset.image_paths, dataset.bounding_boxes)
+    
     q_func = chainerrl.q_functions.SingleModelStateQFunctionWithDiscreteAction(CustomModel(9))
     optimizer = chainer.optimizers.Adam(eps=1e-2)
     optimizer.setup(q_func)

@@ -16,6 +16,7 @@ from PIL import Image
 from custom_model import CustomModel
 from config import CONFIG, print_config
 from actions import ACTIONS
+from datasets import load_dataset
 
 from chainerrl.misc.random_seed import set_random_seed
 
@@ -37,57 +38,7 @@ try:
 except ModuleNotFoundError:
     print('Object Detection Library not initialized correctly')
 
-
-class Dataset:
-    def __init__(self, image_paths, true_bboxes):
-        self.image_paths = image_paths
-        self.true_bboxes = true_bboxes
-
-    @classmethod
-    def from_json(cls, jsonfile_path):
-        absolute_paths, bboxes = [], []
-        images_base_path = os.path.dirname(jsonfile_path)
-        with open(jsonfile_path) as f:
-            data = json.load(f)
-            for example in data:
-                absolute_path = os.path.join(images_base_path, example['file_name'])
-                if os.path.exists(absolute_path):
-                    absolute_paths.append(absolute_path)
-                    bboxes.append(list(example['bounding_boxes']))
-        return cls(absolute_paths, bboxes)
-
-    @classmethod
-    def from_numpy(cls, imagefile_path, boxfile_path):
-        images_base_path = os.path.dirname(imagefile_path)
-        relative_paths = np.loadtxt(imagefile_path, dtype=str)
-        absolute_paths = [images_base_path + i.strip('.') for i in relative_paths]
-        if type(absolute_paths) is not list:
-            absolute_paths = [image_paths]
-        bboxes = np.load(boxfile_path, allow_pickle=True)
-        return cls(absolute_paths, bboxes)
-
-    def get(self, idx, as_image=True):
-        image = self.image_paths[idx]
-        if as_image:
-            image = Image.open(image)
-        true_bboxes = self.true_bboxes[idx]
-        return image, true_bboxes
-
-    def get_image_name(self, idx):
-        image_path, _ = self.get(idx, as_image=False)
-        image_fname = Path(image_path).name
-        image_name = image_fname.split('.')[0]
-        return image_name
-
-    def random_sample(self, as_image=True):
-        random_index = np.random.randint(len(self.image_paths))
-        return self.get(random_idx, as_image=as_image)
-
-    def __len__(self):
-        return len(self.image_paths)
-
-
-def create_agent_with_environment(actions, dataset, config,
+def create_agent_with_environment(actions, image_paths, bounding_boxes, config,
     env_mode='test', gpu_id=-1, max_steps_per_image=200,
     # Training params needed to initialize chainer, but shouldn't matter for testing
     replay_buffer_capacity=20000, gamma=0.95, replay_start_size=100,
@@ -95,7 +46,7 @@ def create_agent_with_environment(actions, dataset, config,
 ):
     num_actions = len(actions)
     env = TextLocEnv(
-        dataset.image_paths, dataset.true_bboxes, mode=env_mode,
+        image_paths, bounding_boxes, mode=env_mode,
         premasking=False, playout_episode=True,
         max_steps_per_image=max_steps_per_image
     )
@@ -147,12 +98,10 @@ Set arguments w/ config file (--config) or cli
 def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='images', plots_dirname='plots', max_sample_size=100):
     print_config()
 
-    if CONFIG['jsonfile_path']:
-        dataset = Dataset.from_json(CONFIG['jsonfile_path'])
-    else:
-        dataset = Dataset.from_numpy(CONFIG['imagefile_path'], CONFIG['boxfile_path'])
-
-    agent, env = create_agent_with_environment(ACTIONS, dataset, CONFIG)
+    dataset = load_dataset(CONFIG['dataset'], CONFIG['dataset_path'])
+    agent, env = create_agent_with_environment(
+        ACTIONS, dataset.image_paths, dataset.bounding_boxes, CONFIG
+    )
 
     # Create new evaluation folder
     now_date = datetime.datetime.now()
