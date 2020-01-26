@@ -15,7 +15,6 @@ from PIL import Image
 
 from custom_model import CustomModel
 from config import CONFIG, print_config
-from actions import ACTIONS
 from datasets import load_dataset
 
 from chainerrl.misc.random_seed import set_random_seed
@@ -38,20 +37,20 @@ try:
 except ModuleNotFoundError:
     print('Object Detection Library not initialized correctly')
 
-def create_agent_with_environment(actions, image_paths, bounding_boxes, config,
+def create_agent_with_environment(image_paths, bounding_boxes, config,
     env_mode='test', gpu_id=-1, max_steps_per_image=200,
     # Training params needed to initialize chainer, but shouldn't matter for testing
     replay_buffer_capacity=20000, gamma=0.95, replay_start_size=100,
     update_interval=1, target_update_interval=100
 ):
-    num_actions = len(actions)
     env = TextLocEnv(
         image_paths, bounding_boxes, mode=env_mode,
         premasking=False, playout_episode=True,
         max_steps_per_image=max_steps_per_image
     )
+    n_actions = env.action_space.n
     q_func = chainerrl.q_functions.SingleModelStateQFunctionWithDiscreteAction(
-        CustomModel(num_actions))
+        CustomModel(n_actions))
     optimizer = chainer.optimizers.Adam(eps=1e-2)
     optimizer.setup(q_func)
     replay_buffer = chainerrl.replay_buffer.ReplayBuffer(replay_buffer_capacity)
@@ -100,7 +99,7 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
 
     dataset = load_dataset(CONFIG['dataset'], CONFIG['dataset_path'])
     agent, env = create_agent_with_environment(
-        ACTIONS, dataset.image_paths, dataset.bounding_boxes, CONFIG
+        dataset.image_paths, dataset.bounding_boxes, CONFIG
     )
 
     # Create new evaluation folder
