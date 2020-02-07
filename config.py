@@ -26,6 +26,10 @@ def load_config(path=None):
     CONFIG['resultdir_path'] = _configparser.get('agent', 'resultdir_path', fallback='./results')
     CONFIG['agentdir_path'] = _configparser.get('agent', 'agentdir_path', fallback='./agent')
 
+    # seeds (for reproducable experiments)
+    CONFIG['seed_agent'] = _configparser.getint('agent', 'seed_agent', fallback=20301)
+    CONFIG['seed_environment'] = _configparser.getint('agent', 'seed_environment', fallback=20302)
+
     # hardware
     CONFIG['gpu_id'] = _configparser.getint('agent', 'gpu_id', fallback=-1)
 
