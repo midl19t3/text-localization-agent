@@ -1,3 +1,8 @@
+experiments/
+results/
+tensorboard/
+detection_metrics/
+evaluations/
 .idea/
 .DS_Store
 

@@ -6,6 +6,7 @@ from PIL import Image
 from pathlib import Path
 from abc import ABC, abstractmethod
 
+
 class Dataset(ABC):
     id = NotImplemented
 
@@ -38,6 +39,7 @@ class Dataset(ABC):
     def __len__(self):
         return len(self.image_paths)
 
+
 class SimpleDataset(Dataset):
     id = 'simple'
 
@@ -45,15 +47,16 @@ class SimpleDataset(Dataset):
         image_locations_file = os.path.join(self.dataset_path, 'image_locations.txt')
         relative_image_paths = np.loadtxt(image_locations_file, dtype=str)
         self.image_paths = [os.path.join(self.dataset_path, image_path) for image_path in relative_image_paths]
-        
+
         bounding_boxes_file = os.path.join(self.dataset_path, 'bounding_boxes.npy')
         self.bounding_boxes = np.load(bounding_boxes_file, allow_pickle=True)
+
 
 class SignDataset(Dataset):
     id = 'sign'
 
     def load(self):
-        config_file_path = os.path.join(self.dataset_path, 'training.json')
+        config_file_path = os.path.join(self.dataset_path, 'train.json')
 
         absolute_image_paths = []
         bounding_boxes = []
@@ -68,6 +71,7 @@ class SignDataset(Dataset):
 
         self.image_paths = absolute_image_paths
         self.bounding_boxes = bounding_boxes
+
 
 class SynthTextDataset(Dataset):
     id = 'synthtext'
@@ -140,14 +144,18 @@ class SynthTextDataset(Dataset):
                 x0, x1, x2, x3 = image_bboxes[0]
                 y0, x1, x2, x3 = image_bboxes[1]
                 output_bboxes.append([int(min(x0, x3)), int(min(y0, y1)), int(max(x1, x2)), int(max(y2, y3))])
-            
+
             bounding_boxes.append(output_bboxes)
 
         self.bounding_boxes = bounding_boxes
         self.image_paths = absolute_image_paths
-        
+
+
 def load_dataset(id, path):
     datasets = [SimpleDataset, SignDataset, SynthTextDataset]
     dataset = {Dataset.id: Dataset for Dataset in datasets}[id](path)
+
+    dataset.load()
+    assert len(dataset.image_paths) == len(dataset.bounding_boxes)
+
     return dataset
-  

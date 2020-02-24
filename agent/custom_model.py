@@ -1,7 +1,7 @@
 from chainer import functions as F
 from chainer import links as L
 from chainer import Chain
-from resnet_group_norm import ResNet as ResNetGroupNorm
+from .resnet_group_norm import ResNet as ResNetGroupNorm
 
 
 class CustomModel(Chain):
