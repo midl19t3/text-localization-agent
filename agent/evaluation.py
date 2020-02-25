@@ -1,5 +1,6 @@
 import os
-import sys
+import pandas as pd
+import matplotlib.pyplot as plt
 from abc import ABC
 from .utils import ensure_folder, to_standard_box
 
@@ -75,3 +76,52 @@ class DetectionMetrics(EvaluationHook):
             self.image_avg_iou[image_idx] = 0
         print(self.image_trigger_ious)
         print(self.image_avg_iou)
+
+
+def plot_training_summary(experiment_path, display_interval=2000):
+    summary_df = pd.read_csv(os.path.join(experiment_path, 'scores.txt'), sep='	')
+
+    if display_interval is not None:
+        # Smoothen plots by averaging over intervals
+        max_steps = summary_df['steps'].max()
+        bins = [x for x in range(display_interval, max_steps, display_interval)]
+        summary_df['step_intervals'] = pd.cut(x=summary_df['steps'], bins=bins)
+        cut_df = summary_df.groupby(['step_intervals']).mean()
+        summary_df = cut_df
+
+    output_path = os.path.join(experiment_path, 'training')
+    ensure_folder(output_path)
+
+    def _plot_linechart(x, y, x_label, y_label, title, filename):
+        fig, ax = plt.subplots()
+        ax.plot(x, y)
+        ax.set(xlabel=x_label, ylabel=y_label, title=title)
+        ax.grid()
+        fig.savefig(os.path.join(output_path, filename))
+
+    _plot_linechart(
+        summary_df['steps'].values, summary_df['average_loss'].values,
+        'Steps', 'Average Loss', 'Training Loss', 'average_loss.png'
+    )
+    _plot_linechart(
+        summary_df['steps'].values, summary_df['average_q'].values,
+        'Steps', 'Average Q', 'Training Q', 'average_q.png'
+    )
+    _plot_linechart(
+        summary_df['steps'].values, summary_df['mean'].values,
+        'Steps', 'Mean Reward', 'Training Reward (Mean)', 'mean_reward.png'
+    )
+    _plot_linechart(
+        summary_df['steps'].values, summary_df['median'].values,
+        'Steps', 'Median Reward', 'Training Reward (Median)', 'median_reward.png'
+    )
+    _plot_linechart(
+        summary_df['steps'].values, summary_df['max'].values,
+        'Steps', 'Max Reward', 'Training Reward (Max)', 'max_reward.png'
+    )
+    _plot_linechart(
+        summary_df['steps'].values, summary_df['stdev'].values,
+        'Steps', 'Stdev Reward', 'Training Reward (Stdev)', 'stdev_reward.png'
+    )
+
+    summary_df.to_csv(os.path.join(output_path, 'scores.csv'))

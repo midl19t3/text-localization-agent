@@ -10,13 +10,8 @@ from agent.datasets import load_dataset
 from agent.factory import create_agent
 from agent.tensorboard import TensorBoardLoggingStepHook, TensorBoardEvaluationLoggingHandler
 from agent.utils import ensure_folder
+from agent.evaluation import plot_training_summary
 from text_localization_environment import TextLocEnv
-
-# TODO
-# generate training metrics from scores.txt
-# run extensive evaluation (evaluate.py)
-# later: create_env -> provide in env package
-
 
 
 def train_agent(experiments_dir='./experiments'):
@@ -68,6 +63,10 @@ def train_agent(experiments_dir='./experiments'):
     agent_path = os.path.join(experiment_path, "agent" + "_" + agent_classname)
     ensure_folder(agent_path)
     agent.save(agent_path)
+
+    # Plot training summary
+    if not os.path.exists(os.path.join(experiment_path, 'training')):
+        plot_training_summary(experiment_path)
 
 
 if __name__ == '__main__':

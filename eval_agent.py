@@ -4,14 +4,13 @@ import logging
 import argparse
 import numpy as np
 import pandas as pd
-import matplotlib
 import matplotlib.pyplot as plt
 from pathlib import Path
 from config import CONFIG, print_config
 from agent.datasets import load_dataset
 from agent.factory import create_agent
 from agent.utils import ensure_folder
-from agent.evaluation import f1, EpisodeRenderer, DetectionMetrics
+from agent.evaluation import f1, EpisodeRenderer, DetectionMetrics, plot_training_summary
 from text_localization_environment import TextLocEnv
 
 
@@ -74,6 +73,10 @@ def evaluate_agent(experiment_path, n_samples=100, agent_dir='best',
     # Load agent from given path
     agent_path = os.path.join(experiment_path, agent_dir)
     agent = create_agent(env, CONFIG, from_path=agent_path)
+
+    # Plot training summary (if it doesn't exist yet)
+    if not os.path.exists(os.path.join(experiment_path, 'training')):
+        plot_training_summary(experiment_path)
 
     # Create new evaluation folder
     eval_dirname = 'evaluation'
