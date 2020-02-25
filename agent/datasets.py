@@ -23,8 +23,8 @@ class Dataset(ABC):
         image = self.image_paths[index]
         if as_image:
             image = Image.open(image)
-        true_bboxes = self.true_bboxes[index]
-        return image, true_bboxes
+        bounding_boxes = self.bounding_boxes[index]
+        return image, bounding_boxes
 
     def get_image_name(self, index):
         image_path, _ = self.get(index, as_image=False)
@@ -56,7 +56,7 @@ class SignDataset(Dataset):
     id = 'sign'
 
     def load(self):
-        config_file_path = os.path.join(self.dataset_path, 'train.json')
+        config_file_path = os.path.join(self.dataset_path, 'training.json')
 
         absolute_image_paths = []
         bounding_boxes = []
@@ -76,7 +76,7 @@ class SignDataset(Dataset):
 class SynthTextDataset(Dataset):
     id = 'synthtext'
 
-    def data(self):
+    def load(self):
         """
         mat file structure:
         {
@@ -154,8 +154,5 @@ class SynthTextDataset(Dataset):
 def load_dataset(id, path):
     datasets = [SimpleDataset, SignDataset, SynthTextDataset]
     dataset = {Dataset.id: Dataset for Dataset in datasets}[id](path)
-
     dataset.load()
-    assert len(dataset.image_paths) == len(dataset.bounding_boxes)
-
     return dataset

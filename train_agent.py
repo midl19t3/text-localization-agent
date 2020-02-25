@@ -5,6 +5,15 @@ import logging
 from chainerrl.misc.random_seed import set_random_seed
 from chainerrl.experiments.train_agent import train_agent_with_evaluation
 from tb_chainer import SummaryWriter
+<<<<<<< HEAD
+=======
+import time
+import re
+import json
+
+from datasets import load_dataset
+from custom_model import CustomModel
+>>>>>>> master
 from config import CONFIG, write_config, print_config
 from agent.datasets import load_dataset
 from agent.factory import create_agent
@@ -21,10 +30,18 @@ def run_experiment(experiments_dir='./experiments'):
     print_config()
 
     dataset = load_dataset(CONFIG['dataset'], CONFIG['dataset_path'])
+<<<<<<< HEAD
     env = TextLocEnv(dataset.image_paths, dataset.bounding_boxes)
     agent = create_agent(env, CONFIG)
 
     # Seeding for reproducable experiments
+=======
+    assert len(dataset.image_paths) == len(dataset.bounding_boxes)
+
+    env = TextLocEnv(dataset.image_paths, dataset.bounding_boxes)
+
+    # Seed agent & environment seeds for reproducable experiments
+>>>>>>> master
     set_random_seed(CONFIG['seed_agent'], gpus=[CONFIG['gpu_id']])
     env.seed(CONFIG['seed_environment'])
 

@@ -25,9 +25,7 @@ Set arguments w/ config file (--config) or cli
 def main():
     print_config()
 
-    dataset_id = CONFIG['dataset']
-    dataset = get_dataset(dataset_id)(CONFIG['dataset_path'])
-    dataset.load()
+    dataset = load_dataset(CONFIG['dataset'], CONFIG['dataset_path'])
 
     env = TextLocEnv(dataset.image_paths, dataset.bounding_boxes)
     m = CustomModel(10)
