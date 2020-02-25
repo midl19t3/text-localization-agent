@@ -1,22 +1,9 @@
-import os
-import numpy as np
-from text_localization_environment import TextLocEnv
-from chainerrl.links.mlp import MLP
-from chainerrl.links import Sequence
-from chainerrl.experiments.train_agent import train_agent_with_evaluation
 import chainer
-import chainerrl
-import logging
-import sys
-from tb_chainer import SummaryWriter
-import time
-import re
 import chainer.computational_graph as c
-
-from custom_model import CustomModel
+from text_localization_environment import TextLocEnv
 from config import CONFIG, print_config
-from datasets import get_dataset
-
+from agent.datasets import load_dataset
+from agent.custom_model import CustomModel
 
 """
 Set arguments w/ config file (--config) or cli
