@@ -57,12 +57,26 @@ class EpisodeRenderer(EvaluationHook):
 class DetectionMetrics(EvaluationHook):
     def __init__(self, eval_path):
         self.eval_path = eval_path
+        self.image_idx = None
+
         # Map from image indices to predicted bounding box
         self.image_pred_bboxes = {}
         self.image_true_bboxes = {}
         # Map from images indices to list of IoU values at each trigger
         self.image_trigger_ious = {}
         self.image_avg_iou = {}
+        # Map from image indices to taken actions
+        self.image_actions = {}
+        self.image_num_actions = {}
+
+    def start_episode(self, image_idx):
+        self.image_idx = image_idx
+        self.image_actions[self.image_idx] = []
+        self.image_num_actions[self.image_idx] = 0
+
+    def after_step(self, action, obs, reward, done, info):
+        self.image_actions[self.image_idx].append(action)
+        self.image_num_actions[self.image_idx] += 1
 
     def finish_episode(self, image_idx):
         # Save bounding box predictions

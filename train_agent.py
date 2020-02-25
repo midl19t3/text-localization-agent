@@ -68,6 +68,7 @@ def train_agent(experiments_dir='./experiments'):
     if not os.path.exists(os.path.join(experiment_path, 'training')):
         plot_training_summary(experiment_path)
 
+    return experiment_path
 
 if __name__ == '__main__':
-    train_agent()
+    _ = train_agent()

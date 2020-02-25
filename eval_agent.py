@@ -2,9 +2,11 @@ import os
 import sys
 import logging
 import argparse
+import itertools
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from collections import Counter
 from pathlib import Path
 from config import CONFIG, print_config
 from agent.datasets import load_dataset
@@ -156,6 +158,10 @@ def evaluate_agent(experiment_path, n_samples=100, agent_dir='best',
     iou_metrics = {}
     iou_thresholds = [round(x, 2) for x in np.arange(0, 1, .05)]
 
+    all_actions = list(itertools.chain(*collector.image_actions.values()))
+    action_counter = Counter(all_actions)
+    n_actions = len(action_counter.keys())
+
     for iou_threshold in iou_thresholds:
         metrics_per_class = evaluator.GetPascalVOCMetrics(
             all_boxes,
@@ -173,6 +179,14 @@ def evaluate_agent(experiment_path, n_samples=100, agent_dir='best',
         }
         metrics['f1'] = f1(metrics['precision'], metrics['recall'])
         metrics['avg_iou'] = sum(list(collector.image_avg_iou.values())) / len(collector.image_avg_iou)
+
+        metrics['total_actions'] = sum(list(collector.image_num_actions.values()))
+        metrics['avg_actions'] = sum(list(collector.image_num_actions.values())) / len(collector.image_num_actions)
+
+        for action, count in action_counter.items():
+            action_name = str(action)
+            metrics[f'total_action_{action_name}'] = count
+
         iou_metrics[iou_threshold] = metrics
 
     # Save metrics as CSV
@@ -180,10 +194,16 @@ def evaluate_agent(experiment_path, n_samples=100, agent_dir='best',
     iou_metrics_df.index.name = 'iou_threshold'
     iou_metrics_df.to_csv(os.path.join(eval_path, 'metrics.csv'))
 
-    print("Plotting curves")
+    print("Generating plots")
 
     plots_path = os.path.join(eval_path, 'plots')
     ensure_folder(plots_path)
+
+    # Histogram of agent's actions
+    fig, ax = plt.subplots()
+    ax.hist(all_actions, bins=n_actions, orientation='horizontal', color='#0504aa')
+    ax.set(xlabel='Action', ylabel='Frequency (Total)', title='Agent Actions')
+    fig.savefig(os.path.join(plots_path, 'action_hist.png'))
 
     # Precision-Recall curves at different IoU thresholds
     for iou_threshold in [0.5, 0.75]:
