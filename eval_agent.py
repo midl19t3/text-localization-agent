@@ -1,23 +1,19 @@
 import os
 import sys
-import datetime
+import logging
+import argparse
 import numpy as np
 import pandas as pd
-import json
-import chainer
-import chainerrl
 import matplotlib
 import matplotlib.pyplot as plt
-
 from pathlib import Path
-from text_localization_environment import TextLocEnv
-from PIL import Image
-
-from custom_model import CustomModel
 from config import CONFIG, print_config
-from datasets import load_dataset
+from agent.datasets import load_dataset
+from agent.factory import create_agent
+from agent.utils import ensure_folder
+from agent.evaluation import f1, EpisodeRenderer, DetectionMetrics
+from text_localization_environment import TextLocEnv
 
-from chainerrl.misc.random_seed import set_random_seed
 
 def init_detection_metrics_lib():
     def add_path(path):
@@ -35,142 +31,70 @@ try:
     from Evaluator import *
     from utils import *
 except ModuleNotFoundError:
-    print('Object Detection Library not initialized correctly')
-
-def create_agent_with_environment(image_paths, bounding_boxes, config,
-    env_mode='test', gpu_id=-1, max_steps_per_image=200,
-    # Training params needed to initialize chainer, but shouldn't matter for testing
-    replay_buffer_capacity=20000, gamma=0.95, replay_start_size=100,
-    update_interval=1, target_update_interval=100
-):
-    env = TextLocEnv(
-        image_paths, bounding_boxes, mode=env_mode,
-        premasking=False, playout_episode=True,
-        max_steps_per_image=max_steps_per_image
-    )
-    n_actions = env.action_space.n
-    q_func = chainerrl.q_functions.SingleModelStateQFunctionWithDiscreteAction(
-        CustomModel(n_actions))
-    optimizer = chainer.optimizers.Adam(eps=1e-2)
-    optimizer.setup(q_func)
-    replay_buffer = chainerrl.replay_buffer.ReplayBuffer(replay_buffer_capacity)
-
-    explorer = chainerrl.explorers.ConstantEpsilonGreedy(
-        epsilon=0,
-        random_action_func=env.action_space.sample)
-
-    agent = chainerrl.agents.DQN(
-        q_func,
-        optimizer,
-        replay_buffer,
-        gamma,
-        explorer,
-        gpu=gpu_id,
-        replay_start_size=replay_start_size,
-        update_interval=update_interval,
-        target_update_interval=target_update_interval)
-    agent.load(config['agentdir_path'])
-
-    # Seed agent & environment seeds for reproducable experiments
-    set_random_seed(config['seed_agent'], gpus=[config['gpu_id']])
-    env.seed(config['seed_environment'])
-
-    return agent, env
+    print('Object Detection Library not initialized correctly.')
 
 
-def ensure_folder(dir_path, exist_ok=True):
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path, exist_ok=exist_ok)
-
-def f1(precision, recall):
-    sum = precision + recall
-    if sum == 0:
-        return 0
-    return 2 * (precision * recall) / sum
-
-"""
-Set arguments w/ config file (--config) or cli
-:gpu_id :imagefile_path :boxfile_path :resultdir_path :start_epsilon :end_epsilon :decay_steps \
-:replay_buffer_capacity :gamma :replay_start_size :update_interval :target_update_interval :steps \
-:steps :eval_n_episodes :train_max_episode_len :eval_interval
-"""
-def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='images', plots_dirname='plots', max_sample_size=100):
-    print_config()
-
-    dataset = load_dataset(CONFIG['dataset'], CONFIG['dataset_path'])
-    agent, env = create_agent_with_environment(
-        dataset.image_paths, dataset.bounding_boxes, CONFIG
-    )
-
-    # Create new evaluation folder
-    now_date = datetime.datetime.now()
-    now_dirname = now_date.strftime("%m-%d-%Y+%H-%M-%S")
-    eval_path = os.path.join(eval_dirname, now_dirname)
-    ensure_folder(eval_path)
-
-    # Store config
-    config_path = os.path.join(eval_path, 'config.json')
-    with open(config_path, 'w') as fp:
-        json.dump(CONFIG, fp)
-
-    print("Running localizations & visualizing episodes")
-    viz_path = os.path.join(eval_path, viz_dirname)
-    ensure_folder(viz_path)
-
-    # Map from image indices to predicted bounding box
-    image_pred_bboxes = {}
-    image_true_bboxes = {}
-    # Map from images indices to list of IoU values at each trigger
-    image_trigger_ious = {}
-    image_avg_iou = {}
-
-    # Use sampling to speed up evaluation if needed
-    sample_size = len(dataset)
-    if max_sample_size is not None and max_sample_size > -1:
-        sample_size = min(sample_size, max_sample_size)
-
-    for image_idx in range(sample_size):
+def run_agent(agent, env, n_samples, hooks=[]):
+    for image_idx in range(n_samples):
         print('Image: %s' % str(image_idx))
+
         obs = env.reset(image_index=image_idx)
         done = False
-        frames = []
+
+        for hook in hooks:
+            hook.set_environment(env)
+            hook.start_episode(image_idx)
 
         # Environment will terminate based on max steps per image
         while (not done):
+            for hook in hooks:
+                hook.before_step()
             action = agent.act(obs)
             obs, reward, done, info = env.step(action)
-            # Save rendered frame for current step
-            img = env.render(mode='human', return_as_file=True)
-            frames.append(img)
+            for hook in hooks:
+                hook.after_step(action, obs, reward, done, info)
 
-        # Save bounding box predictions
-        image_pred_bboxes[image_idx] = [TextLocEnv.to_standard_box(box) for box in env.episode_pred_bboxes]
-        image_true_bboxes[image_idx] = [TextLocEnv.to_standard_box(box) for box in env.episode_true_bboxes]
-        print(image_pred_bboxes[image_idx])
-        print(image_true_bboxes[image_idx])
+        for hook in hooks:
+            hook.finish_episode(image_idx)
 
-        # Track intermediary metrics
-        image_trigger_ious[image_idx] = env.episode_trigger_ious
-        if len(env.episode_trigger_ious) > 0:
-            image_avg_iou[image_idx] = sum(env.episode_trigger_ious) / len(env.episode_trigger_ious)
-        else:
-            image_avg_iou[image_idx] = 0
-        print(image_trigger_ious)
-        print(image_avg_iou)
 
-        # Store visualized episode
-        print('Visualizing %s' % str(image_idx))
-        gif_path = os.path.join(viz_path, f'{image_idx}.gif')
-        frames[0].save(gif_path,
-           format='GIF',
-           append_images=frames[1:],
-           save_all=True,
-           duration=100,
-           loop=0
-       )
+def evaluate_agent(experiment_path, n_samples=100, agent_dir='best',
+    visualize_episodes=True
+):
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout, format='')
+    print_config()
 
-    print("Write bbox files for Object Detection Metrics")
+    dataset = load_dataset(CONFIG['dataset'], CONFIG['dataset_path'])
+    env = TextLocEnv(
+        dataset.image_paths, dataset.bounding_boxes,
+        # Always playout full episodes during testing
+        mode='test', premasking=False, playout_episode=True,
+        max_steps_per_image=200
+    )
+    # Load agent from given path
+    agent_path = os.path.join(experiment_path, agent_dir)
+    agent = create_agent(env, CONFIG, from_path=agent_path)
 
+    # Create new evaluation folder
+    eval_dirname = 'evaluation'
+    eval_path = os.path.join(experiment_path, eval_dirname)
+    ensure_folder(eval_path)
+
+    # Use sampling to speed up evaluation if needed
+    sample_size = len(dataset)
+    if n_samples is not None and n_samples > -1:
+        sample_size = min(sample_size, n_samples)
+
+    collector = DetectionMetrics(eval_path)
+    hooks = []
+    hooks.append(collector)
+    if visualize_episodes:
+        gif_path = os.path.join(eval_path, 'episodes')
+        hooks.append(EpisodeRenderer(gif_path))
+
+    run_agent(agent, env, sample_size, hooks=hooks)
+
+    print("Write bbox files")
     def _write_bbox_file(name, bbox_map):
         dir_path = os.path.join(eval_path, name)
         ensure_folder(dir_path)
@@ -190,9 +114,8 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
             txt_fpath = os.path.join(dir_path, f'{image_name}.txt')
             with open(txt_fpath, 'w+') as f:
                 f.write(image_txt)
-
-    _write_bbox_file('detections', image_pred_bboxes)
-    _write_bbox_file('groundtruths', image_true_bboxes)
+    _write_bbox_file('predictions', collector.image_pred_bboxes)
+    _write_bbox_file('groundtruths', collector.image_true_bboxes)
 
     print("Evaluating predictions against ground truth")
 
@@ -213,10 +136,10 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
                 boxes.append(box)
         return boxes
 
-    true_boxes = _generate_lib_bboxes(BBType.GroundTruth, image_true_bboxes)
+    true_boxes = _generate_lib_bboxes(BBType.GroundTruth, collector.image_true_bboxes)
     # Set default confidence as .01 for now (since agent doesn't score regions)
     pred_boxes = _generate_lib_bboxes(
-        BBType.Detected, image_pred_bboxes, confidence=.01
+        BBType.Detected, collector.image_pred_bboxes, confidence=.01
     )
 
     all_boxes = BoundingBoxes()
@@ -254,9 +177,9 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
     iou_metrics_df.index.name = 'iou_threshold'
     iou_metrics_df.to_csv(os.path.join(eval_path, 'metrics.csv'))
 
-    print("Plotting metrics")
+    print("Plotting curves")
 
-    plots_path = os.path.join(eval_path, plots_dirname)
+    plots_path = os.path.join(eval_path, 'plots')
     ensure_folder(plots_path)
 
     # Precision-Recall curves at different IoU thresholds
@@ -294,7 +217,7 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
 
     print("Drawing images with predictions and ground truths")
 
-    images_path = os.path.join(eval_path, images_dirname)
+    images_path = os.path.join(eval_path, 'images')
     ensure_folder(images_path)
 
     for image_idx in range(sample_size):
@@ -306,5 +229,16 @@ def main(eval_dirname='evaluations', viz_dirname='episodes', images_dirname='ima
         cv2.imwrite(os.path.join(images_path, image_fname), image)
         print('Image %s created successfully!' % image_name)
 
+
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-e', '--experiment', type=str, help='Path to experiment folder')
+    parser.add_argument('-a', '--agent', type=str, help='Name of agent directory in experiment folder', default='best')
+    parser.add_argument('-n', type=int, help='Number of images to be used for evaluation', default=100)
+    parser.add_argument('-v', '--visualize', action='store_true', help='Whether episodes should be saved as GIFs', default=True)
+    args, _ = parser.parse_known_args()
+
+    evaluate_agent(
+        args.experiment, n_samples=args.n, agent_dir=args.agent,
+        visualize_episodes=args.visualize
+    )

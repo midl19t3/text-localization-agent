@@ -7,7 +7,7 @@ from chainerrl.q_functions import SingleModelStateQFunctionWithDiscreteAction
 from .custom_model import CustomModel
 
 
-def create_agent(env, config):
+def create_agent(env, config, from_path=None):
     n_actions = env.action_space.n
 
     # Initialize Q-network for predicting action values
@@ -43,5 +43,8 @@ def create_agent(env, config):
         replay_start_size=config['replay_start_size'],
         update_interval=config['update_interval'],
         target_update_interval=config['target_update_interval'])
+
+    if from_path is not None:
+        agent.load(from_path)
 
     return agent
