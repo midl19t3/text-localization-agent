@@ -169,7 +169,7 @@ def evaluate_agent(experiment_path, n_samples=100, agent_dir='best',
             'num_fp': text_metrics['total FP'],
         }
         metrics['f1'] = f1(metrics['precision'], metrics['recall'])
-        metrics['avg_iou'] = sum(list(image_avg_iou.values())) / len(image_avg_iou)
+        metrics['avg_iou'] = sum(list(collector.image_avg_iou.values())) / len(collector.image_avg_iou)
         iou_metrics[iou_threshold] = metrics
 
     # Save metrics as CSV

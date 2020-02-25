@@ -20,17 +20,9 @@ def load_config(path=None):
     elif path:
         _configparser.read(path)
 
-<<<<<<< HEAD
     # == dataset ==
     CONFIG['dataset'] = _configparser.get('dataset', 'dataset')
     CONFIG['dataset_path'] = _configparser.get('dataset', 'dataset_path')
-=======
-    # data and paths
-    CONFIG['dataset'] = _configparser.get('dataset', 'dataset')
-    CONFIG['dataset_path'] = _configparser.get('dataset', 'dataset_path')
-    CONFIG['resultdir_path'] = _configparser.get('agent', 'resultdir_path', fallback='./results')
-    CONFIG['agentdir_path'] = _configparser.get('agent', 'agentdir_path', fallback='./agent')
->>>>>>> master
 
     # == experiment ==
     CONFIG['experiment_id'] = _configparser.get('experiment', 'experiment_id', fallback='unnamed')
@@ -62,6 +54,7 @@ def load_config(path=None):
     CONFIG['eval_n_episodes'] = _configparser.getint('evaluation', 'eval_n_episodes', fallback=10)
     CONFIG['eval_interval'] = _configparser.getint('evaluation', 'eval_interval', fallback=500)
     CONFIG['use_tensorboard'] = _configparser.getboolean('evaluation', 'use_tensorboard', fallback=False)
+    CONFIG['tensorboard'] = _configparser.getboolean('evaluation', 'use_tensorboard', fallback=False)
 
     # if set, override config w/ command line arguments
     for key in CONFIG:
