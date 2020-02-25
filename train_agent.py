@@ -5,15 +5,6 @@ import logging
 from chainerrl.misc.random_seed import set_random_seed
 from chainerrl.experiments.train_agent import train_agent_with_evaluation
 from tb_chainer import SummaryWriter
-<<<<<<< HEAD
-=======
-import time
-import re
-import json
-
-from datasets import load_dataset
-from custom_model import CustomModel
->>>>>>> master
 from config import CONFIG, write_config, print_config
 from agent.datasets import load_dataset
 from agent.factory import create_agent
@@ -22,26 +13,21 @@ from agent.utils import ensure_folder
 from text_localization_environment import TextLocEnv
 
 # TODO
+# generate training metrics from scores.txt
 # run extensive evaluation (evaluate.py)
 # later: create_env -> provide in env package
 
-def run_experiment(experiments_dir='./experiments'):
+
+
+def train_agent(experiments_dir='./experiments'):
     logging.basicConfig(level=logging.INFO, stream=sys.stdout, format='')
     print_config()
 
     dataset = load_dataset(CONFIG['dataset'], CONFIG['dataset_path'])
-<<<<<<< HEAD
     env = TextLocEnv(dataset.image_paths, dataset.bounding_boxes)
     agent = create_agent(env, CONFIG)
 
     # Seeding for reproducable experiments
-=======
-    assert len(dataset.image_paths) == len(dataset.bounding_boxes)
-
-    env = TextLocEnv(dataset.image_paths, dataset.bounding_boxes)
-
-    # Seed agent & environment seeds for reproducable experiments
->>>>>>> master
     set_random_seed(CONFIG['seed_agent'], gpus=[CONFIG['gpu_id']])
     env.seed(CONFIG['seed_environment'])
 
@@ -58,9 +44,10 @@ def run_experiment(experiments_dir='./experiments'):
     if CONFIG['use_tensorboard']:
         tensorboard_path = os.path.join(experiment_path, "tensorboard")
         ensure_folder(tensorboard_path)
+        eval_run_count = 10
         writer = SummaryWriter(tensorboard_path)
         step_hooks = [TensorBoardLoggingStepHook(writer)]
-        handler = TensorBoardEvaluationLoggingHandler(writer, agent, CONFIG['eval_n_episodes'])
+        handler = TensorBoardEvaluationLoggingHandler(writer, agent, eval_run_count)
         logger = logging.getLogger()
         logger.addHandler(handler)
 
@@ -84,4 +71,4 @@ def run_experiment(experiments_dir='./experiments'):
 
 
 if __name__ == '__main__':
-    run_experiment()
+    train_agent()
