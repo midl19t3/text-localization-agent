@@ -56,6 +56,19 @@ def load_config(path=None):
     CONFIG['use_tensorboard'] = _configparser.getboolean('evaluation', 'use_tensorboard', fallback=False)
     CONFIG['tensorboard'] = _configparser.getboolean('evaluation', 'use_tensorboard', fallback=False)
 
+    # == environment ==
+
+    # Train only
+    CONFIG['playout_episode'] = _configparser.getboolean('environment', 'playout_episode', fallback=False)
+    CONFIG['premasking'] = _configparser.getboolean('environment', 'premasking', fallback=True)
+
+    # Train + Test
+    CONFIG['max_steps_per_image'] = _configparser.getint('environment', 'max_steps_per_image', fallback=200)
+    CONFIG['bbox_scaling'] = _configparser.getfloat('environment', 'bbox_scaling', fallback=.0)
+    CONFIG['bbox_transformer'] = _configparser.get('environment', 'bbox_transformer', fallback='base')
+    CONFIG['ior_marker_type'] = _configparser.get('environment', 'ior_marker_type', fallback='cross')
+    CONFIG['has_termination_action'] = _configparser.getboolean('environment', 'ior_marker_type', fallback=False)
+
     # if set, override config w/ command line arguments
     for key in CONFIG:
         _argparser.add_argument('--{}'.format(key), type=type(CONFIG[key]))

@@ -40,6 +40,7 @@ class TensorBoardLoggingStepHook(chainerrl.experiments.StepHook):
         self.summary_writer.add_scalar('average_q', agent.average_q, step_count)
         self.summary_writer.add_scalar('average_loss', agent.average_loss, step_count)
 
+
 class TensorBoardEvaluationLoggingHandler(logging.Handler):
     def __init__(self, summary_writer, agent, eval_run_count, level=logging.NOTSET):
         logging.Handler.__init__(self, level)
