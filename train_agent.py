@@ -7,11 +7,10 @@ from chainerrl.experiments.train_agent import train_agent_with_evaluation
 from tb_chainer import SummaryWriter
 from config import CONFIG, write_config, print_config
 from agent.datasets import load_dataset
-from agent.factory import create_agent
+from agent.factory import create_agent, create_env
 from agent.tensorboard import TensorBoardLoggingStepHook, TensorBoardEvaluationLoggingHandler
 from agent.utils import ensure_folder
 from agent.evaluation import plot_training_summary
-from text_localization_environment import TextLocEnv
 
 
 def train_agent(experiments_dir='./experiments'):
@@ -19,7 +18,7 @@ def train_agent(experiments_dir='./experiments'):
     print_config()
 
     dataset = load_dataset(CONFIG['dataset'], CONFIG['dataset_path'])
-    env = TextLocEnv(dataset.image_paths, dataset.bounding_boxes)
+    env = create_env(dataset, CONFIG)
     agent = create_agent(env, CONFIG)
 
     # Seeding for reproducable experiments

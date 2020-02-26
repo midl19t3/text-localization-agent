@@ -5,7 +5,20 @@ from chainerrl.replay_buffer import EpisodicReplayBuffer
 from chainerrl.explorers import LinearDecayEpsilonGreedy
 from chainerrl.q_functions import SingleModelStateQFunctionWithDiscreteAction
 from .custom_model import CustomModel
+from text_localization_environment import TextLocEnv
 
+def create_env(dataset, config, **kwargs):
+    return TextLocEnv(
+        dataset.image_paths, dataset.bounding_boxes,
+        playout_episode=config['playout_episode'],
+        premasking=config['premasking'],
+        max_steps_per_image=config['max_steps_per_image'],
+        bbox_scaling=config['bbox_scaling'],
+        bbox_transformer=config['bbox_transformer'],
+        ior_marker_type=config['ior_marker_type'],
+        has_termination_action=config['has_termination_action'],
+        **kwargs
+    )
 
 def create_agent(env, config, from_path=None):
     n_actions = env.action_space.n

@@ -10,10 +10,9 @@ from collections import Counter
 from pathlib import Path
 from config import CONFIG, print_config
 from agent.datasets import load_dataset
-from agent.factory import create_agent
+from agent.factory import create_agent, create_env
 from agent.utils import ensure_folder
 from agent.evaluation import f1, EpisodeRenderer, DetectionMetrics, plot_training_summary
-from text_localization_environment import TextLocEnv
 
 
 def init_detection_metrics_lib():
@@ -66,12 +65,12 @@ def evaluate_agent(experiment_path, n_samples=100, agent_dir='best',
     print_config()
 
     dataset = load_dataset(CONFIG['dataset'], CONFIG['dataset_path'])
-    env = TextLocEnv(
-        dataset.image_paths, dataset.bounding_boxes,
-        # Always playout full episodes during testing
-        mode='test', premasking=False, playout_episode=True,
-        max_steps_per_image=200
-    )
+
+    # Always playout full episodes during testing
+    CONFIG['playout_episode'] = True
+    CONFIG['premasking'] = False
+    env = create_env(dataset, CONFIG, mode='test')
+
     # Load agent from given path
     agent_path = os.path.join(experiment_path, agent_dir)
     agent = create_agent(env, CONFIG, from_path=agent_path)
