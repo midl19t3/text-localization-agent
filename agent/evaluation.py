@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 from abc import ABC
+from functools import wraps
 from .utils import ensure_folder, to_standard_box
 
 
@@ -139,3 +140,25 @@ def plot_training_summary(experiment_path, display_interval=2000):
     )
 
     summary_df.to_csv(os.path.join(output_path, 'scores.csv'))
+
+
+def create_stats_decorator(env):
+    def _record_stats_decorator(func):
+        @wraps(func)
+        def _wrapped_record_stats(*args, **kwargs):
+            outdir, values = args
+            # Call original func
+            func(*args, **kwargs)
+            # Track custom evaluation metrics
+            iou = float(env.iou)
+            max_iou = float(env.max_iou)
+            num_actions = env.current_step
+            avg_iou = 0
+            if len(env.episode_trigger_ious) > 0:
+                avg_iou = sum(env.episode_trigger_ious) / len(env.episode_trigger_ious)
+            custom_values = values + (iou, avg_iou, max_iou, num_actions)
+            # Save custom evaluation metrics
+            with open(os.path.join(outdir, 'custom_scores.txt'), 'a+') as f:
+                print('\t'.join(str(x) for x in custom_values), file=f)
+        return _wrapped_record_stats
+    return _record_stats_decorator

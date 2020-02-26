@@ -2,6 +2,7 @@ import os
 import sys
 import datetime
 import logging
+import chainerrl
 from chainerrl.misc.random_seed import set_random_seed
 from chainerrl.experiments.train_agent import train_agent_with_evaluation
 from tb_chainer import SummaryWriter
@@ -10,7 +11,7 @@ from agent.datasets import load_dataset
 from agent.factory import create_agent, create_env
 from agent.tensorboard import TensorBoardLoggingStepHook, TensorBoardEvaluationLoggingHandler
 from agent.utils import ensure_folder
-from agent.evaluation import plot_training_summary
+from agent.evaluation import plot_training_summary, create_stats_decorator
 
 
 def train_agent(experiments_dir='./experiments'):
@@ -44,6 +45,10 @@ def train_agent(experiments_dir='./experiments'):
         handler = TensorBoardEvaluationLoggingHandler(writer, agent, eval_run_count)
         logger = logging.getLogger()
         logger.addHandler(handler)
+
+    # Inject hook for recording custom stats during training
+    record_stats = chainerrl.experiments.evaluator.record_stats
+    chainerrl.experiments.evaluator.record_stats = create_stats_decorator(env)(record_stats)
 
     train_agent_with_evaluation(
         agent,
