@@ -67,7 +67,7 @@ def load_config(path=None):
     CONFIG['bbox_scaling'] = _configparser.getfloat('environment', 'bbox_scaling', fallback=.0)
     CONFIG['bbox_transformer'] = _configparser.get('environment', 'bbox_transformer', fallback='base')
     CONFIG['ior_marker_type'] = _configparser.get('environment', 'ior_marker_type', fallback='cross')
-    CONFIG['has_termination_action'] = _configparser.getboolean('environment', 'ior_marker_type', fallback=False)
+    CONFIG['has_termination_action'] = _configparser.getboolean('environment', 'has_termination_action', fallback=False)
 
     # if set, override config w/ command line arguments
     for key in CONFIG:
