@@ -35,7 +35,7 @@ Overview of python executables:
 |---|---|---|
 |`train_agent.py`| Train the agent. This creates a new folder in `./experiments/<experiment_id>` using the `experiment_id` specified in the config. This output directory contains saved models, logfiles (incl. tensorboard logs) and training plots. |`python train_agent.py --config ./config/example.ini` |
 |`eval_agent.py`| Evaluate the agent. Tests the agent with `n` images and creates a report under `<path-to-experiment>/evaluation` containing metrics and visualizations. |`python eval_agent.py -e <path-to-experiment> --config ./config/example.ini` |
-|`scripts/visualize_agent_graph.py`| Creates a .dot file of the computational graph of the agent|`python ./scripts/visualize_agent_graph.py --config ./config/example.ini` |
+|`scripts/render_graph.py`| Creates a .dot file of the computational graph of the agent|`python ./scripts/visualize_agent_graph.py --config ./config/example.ini` |
 
 ## Monitoring with TensorBoard
 
