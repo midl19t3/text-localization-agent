@@ -14,13 +14,15 @@ from agent.factory import create_agent, create_env
 from agent.utils import ensure_folder
 from agent.evaluation import f1, EpisodeRenderer, DetectionMetrics, plot_training_summary
 
-
+# https://github.com/rafaelpadilla/Object-Detection-Metrics
 def init_detection_metrics_lib():
     def add_path(path):
         if path not in sys.path:
             sys.path.insert(0, path)
     current_path = os.path.dirname(os.path.realpath(__file__))
     lib_path = os.path.join(current_path, 'detection_metrics')
+    if not os.path.exists(lib_path):
+        raise ModuleNotFoundError('Object Detection Metrics not installed')
     add_path(lib_path)
 
 init_detection_metrics_lib()
@@ -31,7 +33,8 @@ try:
     from Evaluator import *
     from utils import *
 except ModuleNotFoundError:
-    print('Object Detection Library not initialized correctly.')
+    # So that we don't need to install python-opencv
+    pass
 
 
 def run_agent(agent, env, n_samples, hooks=[]):
