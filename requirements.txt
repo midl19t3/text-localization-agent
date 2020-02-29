@@ -1,10 +1,14 @@
-chainerrl==0.7.0
+chainerrl
 chainer
 numpy
 click
-Pillow
+pillow
 tensorboard-chainer
 chainercv
 matplotlib
 tqdm
 click
+pandas
+cupy
+python-opencv
+tensorflow
