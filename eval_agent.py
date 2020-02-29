@@ -180,10 +180,21 @@ def evaluate_agent(experiment_path, n_samples=100, agent_dir='best',
             'num_fp': text_metrics['total FP'],
         }
         metrics['f1'] = f1(metrics['precision'], metrics['recall'])
-        metrics['avg_iou'] = sum(list(collector.image_avg_iou.values())) / len(collector.image_avg_iou)
+        if len(collector.image_avg_iou) > 0:
+            metrics['avg_iou'] = sum(list(collector.image_avg_iou.values())) / len(collector.image_avg_iou)
+        else:
+            metrics['avg_iou'] = 0
 
         metrics['total_actions'] = sum(list(collector.image_num_actions.values()))
-        metrics['avg_actions'] = sum(list(collector.image_num_actions.values())) / len(collector.image_num_actions)
+        if len(collector.image_num_actions) > 0:
+            metrics['avg_actions'] = sum(list(collector.image_num_actions.values())) / len(collector.image_num_actions)
+        else:
+            metrics['avg_actions'] = 0
+        print(collector.image_num_actions_per_subepisode)
+        avg_actions_subepisode = [sum(x) / len(x) if len(x) else 0 for x in collector.image_num_actions_per_subepisode.values()]
+        print(avg_actions_subepisode)
+        metrics['mean_avg_actions_subepisode'] = sum(avg_actions_subepisode) / len(avg_actions_subepisode)
+        print(metrics['mean_avg_actions_subepisode'])
 
         for action, count in action_counter.items():
             action_name = str(action)

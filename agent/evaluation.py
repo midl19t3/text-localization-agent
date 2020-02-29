@@ -59,7 +59,6 @@ class DetectionMetrics(EvaluationHook):
     def __init__(self, eval_path):
         self.eval_path = eval_path
         self.image_idx = None
-
         # Map from image indices to predicted bounding box
         self.image_pred_bboxes = {}
         self.image_true_bboxes = {}
@@ -69,15 +68,24 @@ class DetectionMetrics(EvaluationHook):
         # Map from image indices to taken actions
         self.image_actions = {}
         self.image_num_actions = {}
+        self.image_num_actions_per_subepisode = {}
 
     def start_episode(self, image_idx):
         self.image_idx = image_idx
         self.image_actions[self.image_idx] = []
+        self.image_num_actions_per_subepisode[self.image_idx] = []
         self.image_num_actions[self.image_idx] = 0
+        self.subepisode_num_actions = 0
 
     def after_step(self, action, obs, reward, done, info):
+        print(self.subepisode_num_actions)
         self.image_actions[self.image_idx].append(action)
         self.image_num_actions[self.image_idx] += 1
+        if self.env.is_trigger(action):
+            self.image_num_actions_per_subepisode[self.image_idx].append(self.subepisode_num_actions)
+            self.subepisode_num_actions = 0
+        else:
+            self.subepisode_num_actions += 1
 
     def finish_episode(self, image_idx):
         # Save bounding box predictions
@@ -89,8 +97,6 @@ class DetectionMetrics(EvaluationHook):
             self.image_avg_iou[image_idx] = sum(self.env.episode_trigger_ious) / len(self.env.episode_trigger_ious)
         else:
             self.image_avg_iou[image_idx] = 0
-        print(self.image_trigger_ious)
-        print(self.image_avg_iou)
 
 
 def plot_training_summary(experiment_path, display_interval=2000):
