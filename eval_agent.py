@@ -204,7 +204,7 @@ def evaluate_agent(experiment_path, n_samples=100, agent_dir='best',
     # Histogram of agent's actions
     fig, ax = plt.subplots()
     ax.hist(all_actions, bins=n_actions, orientation='horizontal', color='#0504aa')
-    ax.set(xlabel='Action', ylabel='Frequency (Total)', title='Agent Actions')
+    ax.set(xlabel='Frequency (Total)', ylabel='Action', title='Agent Actions')
     fig.savefig(os.path.join(plots_path, 'action_hist.png'))
 
     # Precision-Recall curves at different IoU thresholds
